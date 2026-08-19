@@ -1,4 +1,4 @@
-const GITHUB_USER = "YOUR_GITHUB_USERNAME";
+const GITHUB_USER = "mrd123gps";
 const GITHUB_REPO = "TileCollector";
 const GITHUB_BRANCH = "main";
 
