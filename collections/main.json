@@ -44,9 +44,9 @@
     },
     {
       "position": 5,
-      "link": "https://facebook.com",
-      "title": "",
-      "imageType": "favicon",
+      "link": null,
+      "title": null,
+      "imageType": null,
       "imageData": null,
       "linkedCollectionId": null
     },
@@ -60,9 +60,9 @@
     },
     {
       "position": 7,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://google.com",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
