@@ -761,6 +761,18 @@ html, body {
   border: none;
 }
 
+.upload-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.upload-actions-row .btn-secondary {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 0.78rem;
+}
+
 /* Emoji picker */
 .emoji-chosen-row {
   display: flex;

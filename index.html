@@ -235,7 +235,11 @@
         </div>
         <img id="uploadPreviewImg" class="upload-preview" hidden>
       </div>
-      <button class="btn-secondary full-width" id="clearUploadBtn" type="button" hidden>Remove image</button>
+      <div class="upload-actions-row" id="uploadActionsRow" hidden>
+        <button class="btn-secondary" id="fitWidthBtn" type="button" title="Fit to width">Fit ↔</button>
+        <button class="btn-secondary" id="fitHeightBtn" type="button" title="Fit to height">Fit ↕</button>
+        <button class="btn-secondary" id="clearUploadBtn" type="button">Remove image</button>
+      </div>
     </div>
 
     <p class="modal-error" id="tileEditError" hidden></p>

@@ -100,6 +100,9 @@ const imageDropzone = document.getElementById("imageDropzone");
 const dropzoneContent = document.getElementById("dropzoneContent");
 const imageUploadInput = document.getElementById("imageUploadInput");
 const uploadPreviewImg = document.getElementById("uploadPreviewImg");
+const uploadActionsRow = document.getElementById("uploadActionsRow");
+const fitWidthBtn = document.getElementById("fitWidthBtn");
+const fitHeightBtn = document.getElementById("fitHeightBtn");
 const clearUploadBtn = document.getElementById("clearUploadBtn");
 const tileEditError = document.getElementById("tileEditError");
 const tileEditCancelBtn = document.getElementById("tileEditCancelBtn");
@@ -111,6 +114,7 @@ let currentCollectionId = null;
 let isEditMode = false;
 let activeTilePosition = null;
 let pendingUploadDataUrl = null;
+let pendingSourceImage = null;
 let selectedEmoji = "";
 let autosaveTimer = null;
 let saveInFlight = false;
@@ -952,8 +956,9 @@ function resetTileEditForm() {
   uploadPreviewImg.hidden = true;
   uploadPreviewImg.src = "";
   dropzoneContent.hidden = false;
-  clearUploadBtn.hidden = true;
+  uploadActionsRow.hidden = true;
   pendingUploadDataUrl = null;
+  pendingSourceImage = null;
   selectedEmoji = "";
   emojiPreview.textContent = "🙂";
   emojiPickerWrap.hidden = true;
@@ -1045,6 +1050,7 @@ function openTileEditPopup(tile) {
     if (tile.imageData) {
       pendingUploadDataUrl = tile.imageData;
       showUploadPreview(tile.imageData);
+      loadSourceImageFromDataUrl(tile.imageData);
     }
   } else {
     setImageOption("favicon");
@@ -1098,22 +1104,62 @@ pasteClipboardBtn.addEventListener("click", async () => {
   }
 });
 
-/* ---------- Upload dropzone: click, drag & drop, paste ---------- */
+/* ---------- Upload dropzone: click, drag & drop, paste, fit controls ---------- */
 
 function showUploadPreview(dataUrl) {
   uploadPreviewImg.src = dataUrl;
   uploadPreviewImg.hidden = false;
   dropzoneContent.hidden = true;
-  clearUploadBtn.hidden = false;
+  uploadActionsRow.hidden = false;
 }
 
 function clearUploadPreview() {
   pendingUploadDataUrl = null;
+  pendingSourceImage = null;
   uploadPreviewImg.hidden = true;
   uploadPreviewImg.src = "";
   dropzoneContent.hidden = false;
-  clearUploadBtn.hidden = true;
+  uploadActionsRow.hidden = true;
   imageUploadInput.value = "";
+}
+
+function loadSourceImageFromDataUrl(dataUrl) {
+  const img = new Image();
+  img.onload = () => { pendingSourceImage = img; };
+  img.src = dataUrl;
+}
+
+function renderFittedImage(img, mode) {
+  const canvas = document.createElement("canvas");
+  canvas.width = MAX_UPLOAD_DIMENSION;
+  canvas.height = MAX_UPLOAD_DIMENSION;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, MAX_UPLOAD_DIMENSION, MAX_UPLOAD_DIMENSION);
+
+  let drawW, drawH, offsetX, offsetY;
+  if (mode === "cover") {
+    const scale = Math.max(MAX_UPLOAD_DIMENSION / img.width, MAX_UPLOAD_DIMENSION / img.height);
+    drawW = img.width * scale;
+    drawH = img.height * scale;
+    offsetX = (MAX_UPLOAD_DIMENSION - drawW) / 2;
+    offsetY = (MAX_UPLOAD_DIMENSION - drawH) / 2;
+  } else if (mode === "width") {
+    const scale = MAX_UPLOAD_DIMENSION / img.width;
+    drawW = MAX_UPLOAD_DIMENSION;
+    drawH = img.height * scale;
+    offsetX = 0;
+    offsetY = (MAX_UPLOAD_DIMENSION - drawH) / 2;
+  } else {
+    const scale = MAX_UPLOAD_DIMENSION / img.height;
+    drawH = MAX_UPLOAD_DIMENSION;
+    drawW = img.width * scale;
+    offsetY = 0;
+    offsetX = (MAX_UPLOAD_DIMENSION - drawW) / 2;
+  }
+
+  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+  return canvas.toDataURL("image/jpeg", 0.85);
 }
 
 function handleImageFile(file) {
@@ -1127,15 +1173,8 @@ function handleImageFile(file) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = MAX_UPLOAD_DIMENSION;
-      canvas.height = MAX_UPLOAD_DIMENSION;
-      const ctx = canvas.getContext("2d");
-      const scale = Math.max(MAX_UPLOAD_DIMENSION / img.width, MAX_UPLOAD_DIMENSION / img.height);
-      const drawW = img.width * scale;
-      const drawH = img.height * scale;
-      ctx.drawImage(img, (MAX_UPLOAD_DIMENSION - drawW) / 2, (MAX_UPLOAD_DIMENSION - drawH) / 2, drawW, drawH);
-      pendingUploadDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      pendingSourceImage = img;
+      pendingUploadDataUrl = renderFittedImage(img, "cover");
       showUploadPreview(pendingUploadDataUrl);
     };
     img.src = e.target.result;
@@ -1182,9 +1221,6 @@ function extractImageFileFromClipboard(clipboardData) {
   return null;
 }
 
-// Modal-wide paste listener: works regardless of which element inside
-// the tile-edit popup currently has focus, so Ctrl+V is not dependent
-// on the dropzone div itself retaining focus after a click/dialog.
 tileEditOverlay.addEventListener("paste", (e) => {
   if (tileEditOverlay.hidden || uploadGroup.hidden) return;
   const file = extractImageFileFromClipboard(e.clipboardData);
@@ -1192,6 +1228,20 @@ tileEditOverlay.addEventListener("paste", (e) => {
     e.preventDefault();
     handleImageFile(file);
   }
+});
+
+fitWidthBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!pendingSourceImage) return;
+  pendingUploadDataUrl = renderFittedImage(pendingSourceImage, "width");
+  showUploadPreview(pendingUploadDataUrl);
+});
+
+fitHeightBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!pendingSourceImage) return;
+  pendingUploadDataUrl = renderFittedImage(pendingSourceImage, "height");
+  showUploadPreview(pendingUploadDataUrl);
 });
 
 clearUploadBtn.addEventListener("click", (e) => {
