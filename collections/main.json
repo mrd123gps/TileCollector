@@ -60,9 +60,9 @@
     },
     {
       "position": 7,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://google.com",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
