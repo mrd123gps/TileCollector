@@ -3,10 +3,12 @@ const GITHUB_REPO = "TileCollector";
 const GITHUB_BRANCH = "main";
 
 const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
+const API_BASE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`;
 
 const PASSWORD_HASH = "cd6ca56c9b4d7a7a768c45542d035408ff610611a79efa2a10bf2da0006ec70f";
 
 const MAX_UPLOAD_DIMENSION = 300;
+const AUTOSAVE_DELAY_MS = 800;
 
 const gridLeftEl = document.getElementById("gridLeft");
 const gridRightEl = document.getElementById("gridRight");
@@ -14,6 +16,7 @@ const collectionTitleEl = document.getElementById("collectionTitle");
 const statusMsgEl = document.getElementById("statusMsg");
 const panelEl = document.getElementById("panel");
 const editBadgeEl = document.getElementById("editBadge");
+const saveIndicatorEl = document.getElementById("saveIndicator");
 const editModeBtn = document.getElementById("editModeBtn");
 const addCollectionBtn = document.getElementById("addCollectionBtn");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
@@ -23,6 +26,12 @@ const passwordInput = document.getElementById("passwordInput");
 const passwordError = document.getElementById("passwordError");
 const passwordSubmitBtn = document.getElementById("passwordSubmitBtn");
 const passwordCancelBtn = document.getElementById("passwordCancelBtn");
+
+const tokenOverlay = document.getElementById("tokenOverlay");
+const tokenInput = document.getElementById("tokenInput");
+const tokenError = document.getElementById("tokenError");
+const tokenSubmitBtn = document.getElementById("tokenSubmitBtn");
+const tokenCancelBtn = document.getElementById("tokenCancelBtn");
 
 const tileMenuOverlay = document.getElementById("tileMenuOverlay");
 const tileMenuTitle = document.getElementById("tileMenuTitle");
@@ -63,10 +72,17 @@ const tileEditSaveBtn = document.getElementById("tileEditSaveBtn");
 
 let indexData = null;
 let currentCollection = null;
+let currentCollectionId = null;
 let isEditMode = false;
 let activeTilePosition = null;
 let pendingUploadDataUrl = null;
 let selectedEmoji = "";
+let githubToken = null;
+let autosaveTimer = null;
+let saveInFlight = false;
+let hasUnsavedChanges = false;
+
+/* ---------- Data loading (read-only, via raw content) ---------- */
 
 function getHashCollectionId() {
   const hash = window.location.hash.replace("#", "").trim();
@@ -108,6 +124,153 @@ function getTile(position) {
 function isTileEmpty(tile) {
   return !tile.link && !tile.linkedCollectionId;
 }
+
+/* ---------- GitHub write layer ---------- */
+
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
+async function githubApiRequest(path, options = {}) {
+  const res = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      "Authorization": `token ${githubToken}`,
+      "Accept": "application/vnd.github+json",
+      ...(options.headers || {})
+    }
+  });
+  return res;
+}
+
+async function verifyToken(token) {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}`, {
+    headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" }
+  });
+  return res.ok;
+}
+
+async function saveFileToGithub(path, jsonData, commitMessage) {
+  const getRes = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}`);
+  let sha = undefined;
+  if (getRes.status === 200) {
+    const meta = await getRes.json();
+    sha = meta.sha;
+  } else if (getRes.status !== 404) {
+    throw new Error(`Could not read current file state (${getRes.status})`);
+  }
+
+  const body = {
+    message: commitMessage,
+    content: utf8ToBase64(JSON.stringify(jsonData, null, 2)),
+    branch: GITHUB_BRANCH
+  };
+  if (sha) body.sha = sha;
+
+  const putRes = await githubApiRequest(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (!putRes.ok) {
+    const errBody = await putRes.json().catch(() => ({}));
+    throw new Error(errBody.message || `Save failed (${putRes.status})`);
+  }
+  return putRes.json();
+}
+
+function setSaveIndicator(state, text) {
+  saveIndicatorEl.hidden = false;
+  saveIndicatorEl.className = "save-indicator state-" + state;
+  saveIndicatorEl.textContent = text;
+}
+
+function clearSaveIndicatorSoon() {
+  setTimeout(() => {
+    if (!hasUnsavedChanges && !saveInFlight) saveIndicatorEl.hidden = true;
+  }, 2500);
+}
+
+async function persistCurrentCollection() {
+  if (!githubToken) {
+    openTokenModal();
+    return;
+  }
+  const entry = indexData.collections.find(c => c.id === currentCollectionId);
+  if (!entry) return;
+
+  saveInFlight = true;
+  setSaveIndicator("saving", "Saving…");
+  try {
+    await saveFileToGithub(entry.file, currentCollection, `Update collection: ${currentCollection.title}`);
+    hasUnsavedChanges = false;
+    setSaveIndicator("saved", "All changes saved");
+    clearSaveIndicatorSoon();
+  } catch (err) {
+    console.error(err);
+    setSaveIndicator("error", "Save failed — check connection");
+  } finally {
+    saveInFlight = false;
+  }
+}
+
+function markUnsaved() {
+  hasUnsavedChanges = true;
+  setSaveIndicator("saving", "Unsaved changes…");
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(persistCurrentCollection, AUTOSAVE_DELAY_MS);
+}
+
+window.addEventListener("beforeunload", (e) => {
+  if (hasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+/* ---------- Token modal ---------- */
+
+function openTokenModal() {
+  tokenInput.value = "";
+  tokenError.hidden = true;
+  tokenOverlay.hidden = false;
+  tokenInput.focus();
+}
+
+function closeTokenModal() {
+  tokenOverlay.hidden = true;
+}
+
+tokenSubmitBtn.addEventListener("click", async () => {
+  const token = tokenInput.value.trim();
+  if (!token) return;
+  tokenSubmitBtn.disabled = true;
+  const valid = await verifyToken(token);
+  tokenSubmitBtn.disabled = false;
+  if (valid) {
+    githubToken = token;
+    try { sessionStorage.setItem("tc_gh_token", token); } catch (e) {}
+    closeTokenModal();
+    if (hasUnsavedChanges) persistCurrentCollection();
+  } else {
+    tokenError.hidden = false;
+  }
+});
+
+tokenCancelBtn.addEventListener("click", closeTokenModal);
+tokenInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") tokenSubmitBtn.click();
+  if (e.key === "Escape") closeTokenModal();
+});
+tokenOverlay.addEventListener("click", (e) => {
+  if (e.target === tokenOverlay) closeTokenModal();
+});
+
+/* ---------- Tile rendering ---------- */
 
 function buildTileFace(tile) {
   const face = document.createElement("div");
@@ -214,6 +377,7 @@ async function loadCollection(collectionId) {
   try {
     const data = await fetchJson(entry.file);
     currentCollection = data;
+    currentCollectionId = collectionId;
     renderCollection(data);
   } catch (err) {
     statusMsgEl.textContent = "Could not load this collection. Please try again later.";
@@ -232,9 +396,22 @@ function enterEditMode() {
   addCollectionBtn.disabled = false;
   switchCollectionBtn.disabled = false;
   renderCollection(currentCollection);
+
+  try {
+    const saved = sessionStorage.getItem("tc_gh_token");
+    if (saved) githubToken = saved;
+  } catch (e) {}
+  if (!githubToken) openTokenModal();
 }
 
 function exitEditMode() {
+  if (hasUnsavedChanges) {
+    const proceed = confirm("You have unsaved changes. Leave edit mode anyway? Unsaved changes will be lost.");
+    if (!proceed) return;
+    hasUnsavedChanges = false;
+    saveIndicatorEl.hidden = true;
+    loadCollection(currentCollectionId);
+  }
   isEditMode = false;
   panelEl.classList.remove("edit-mode");
   editBadgeEl.hidden = true;
@@ -472,6 +649,7 @@ function openTileEditPopup(tile) {
   }
 
   tileEditOverlay.hidden = false;
+  tileLinkInput.focus();
 }
 
 function closeTileEditPopup() {
@@ -479,7 +657,10 @@ function closeTileEditPopup() {
   emojiPickerWrap.hidden = true;
 }
 
-linkTypeUrlBtn.addEventListener("click", () => setLinkType("url"));
+linkTypeUrlBtn.addEventListener("click", () => {
+  setLinkType("url");
+  tileLinkInput.focus();
+});
 linkTypeCollectionBtn.addEventListener("click", () => setLinkType("collection"));
 
 [imgOptFavicon, imgOptScreenshot, imgOptEmoji, imgOptUpload].forEach(radio => {
@@ -574,7 +755,7 @@ tileEditSaveBtn.addEventListener("click", () => {
   } else if (imgOpt === "screenshot") {
     tile.imageType = "screenshot";
     tile.imageData = tile.imageData || null;
-    // Screenshot fetching will be wired up when GitHub write integration is added.
+    // Live screenshot fetching is not yet implemented; falls back to existing image if any.
   } else {
     tile.imageType = "favicon";
     tile.imageData = null;
@@ -584,13 +765,6 @@ tileEditSaveBtn.addEventListener("click", () => {
   renderCollection(currentCollection);
   markUnsaved();
 });
-
-/* ---------- Save state placeholder ---------- */
-
-function markUnsaved() {
-  // Stage 4 will wire this to actual GitHub autosave.
-  console.log("Unsaved change recorded (not yet persisted to GitHub).");
-}
 
 /* ---------- Init ---------- */
 

@@ -80,6 +80,30 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+.save-indicator {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.01em;
+}
+
+.save-indicator.state-saving {
+  color: #8a6d00;
+  background: #fff6dc;
+}
+
+.save-indicator.state-saved {
+  color: #1a7f4b;
+  background: #e6f7ee;
+}
+
+.save-indicator.state-error {
+  color: var(--danger);
+  background: #fdecec;
+}
+
 .topbar {
   display: flex;
   align-items: center;

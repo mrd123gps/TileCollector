@@ -19,6 +19,7 @@
   <div class="site-title-row">
     <h1 class="site-title">Mr. D's Links</h1>
     <span class="edit-badge" id="editBadge" hidden>Editing</span>
+    <span class="save-indicator" id="saveIndicator" hidden></span>
   </div>
 
   <header class="topbar">
@@ -57,6 +58,20 @@
     <div class="modal-actions">
       <button class="btn-secondary" id="passwordCancelBtn">Cancel</button>
       <button class="btn-primary" id="passwordSubmitBtn">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub token modal -->
+<div class="modal-overlay" id="tokenOverlay" hidden>
+  <div class="modal-box">
+    <h3>Connect to GitHub</h3>
+    <p class="modal-hint">Paste your fine-grained Personal Access Token to save changes to TileCollector. It stays in this browser tab only.</p>
+    <input type="password" id="tokenInput" placeholder="GitHub token" autocomplete="off">
+    <p class="modal-error" id="tokenError" hidden>Could not verify this token. Check it and try again.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="tokenCancelBtn">Cancel</button>
+      <button class="btn-primary" id="tokenSubmitBtn">Connect</button>
     </div>
   </div>
 </div>
