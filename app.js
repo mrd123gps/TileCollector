@@ -138,6 +138,7 @@ function utf8ToBase64(str) {
 async function githubApiRequest(path, options = {}) {
   const res = await fetch(API_BASE + path, {
     ...options,
+    cache: "no-store",
     headers: {
       "Authorization": `token ${githubToken}`,
       "Accept": "application/vnd.github+json",
@@ -150,6 +151,7 @@ async function githubApiRequest(path, options = {}) {
 async function verifyToken(token) {
   try {
     const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}`, {
+      cache: "no-store",
       headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" }
     });
     return res.ok;
@@ -158,16 +160,21 @@ async function verifyToken(token) {
   }
 }
 
-async function saveFileToGithub(path, jsonData, commitMessage) {
-  const getRes = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}`);
-  let sha = undefined;
-  if (getRes.status === 200) {
-    const meta = await getRes.json();
-    sha = meta.sha;
-  } else if (getRes.status !== 404) {
-    const errBody = await getRes.json().catch(() => ({}));
-    throw new Error(errBody.message || `Could not read current file state (${getRes.status})`);
+async function getLatestSha(path) {
+  const res = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}&_=${Date.now()}`);
+  if (res.status === 200) {
+    const meta = await res.json();
+    return meta.sha;
+  } else if (res.status === 404) {
+    return undefined;
+  } else {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.message || `Could not read current file state (${res.status})`);
   }
+}
+
+async function saveFileToGithub(path, jsonData, commitMessage, retriesLeft = 2) {
+  const sha = await getLatestSha(path);
 
   const body = {
     message: commitMessage,
@@ -181,6 +188,12 @@ async function saveFileToGithub(path, jsonData, commitMessage) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
+
+  if (putRes.status === 409 && retriesLeft > 0) {
+    // Someone else changed the file between our GET and PUT (or a cache
+    // served a stale sha). Re-fetch the latest sha and try again.
+    return saveFileToGithub(path, jsonData, commitMessage, retriesLeft - 1);
+  }
 
   if (!putRes.ok) {
     const errBody = await putRes.json().catch(() => ({}));
@@ -208,8 +221,6 @@ async function persistCurrentCollection() {
   }
 
   if (saveInFlight) {
-    // A save is already running. Don't start a second, overlapping one —
-    // just remember that another save is needed once this one finishes.
     saveQueued = true;
     return;
   }
@@ -221,8 +232,6 @@ async function persistCurrentCollection() {
   saveQueued = false;
   setSaveIndicator("saving", "Saving…");
   try {
-    // currentCollection already reflects every edit made in this session,
-    // so we save it directly rather than re-fetching first.
     await saveFileToGithub(entry.file, currentCollection, `Update collection: ${currentCollection.title}`);
     hasUnsavedChanges = false;
     setSaveIndicator("saved", "All changes saved");
