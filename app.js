@@ -2,6 +2,7 @@ const GITHUB_USER = "mrd123gps";
 const GITHUB_REPO = "TileCollector";
 const GITHUB_BRANCH = "main";
 
+const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
 const API_BASE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`;
 
 const PASSWORD_HASH = "cd6ca56c9b4d7a7a768c45542d035408ff610611a79efa2a10bf2da0006ec70f";
@@ -81,33 +82,17 @@ let autosaveTimer = null;
 let saveInFlight = false;
 let hasUnsavedChanges = false;
 
-/* ---------- Data loading (via GitHub API, cache-busted) ---------- */
+/* ---------- Data loading (fast raw CDN reads) ---------- */
 
 function getHashCollectionId() {
   const hash = window.location.hash.replace("#", "").trim();
   return hash || null;
 }
 
-function base64ToUtf8(b64) {
-  const cleaned = b64.replace(/\n/g, "");
-  const binary = atob(cleaned);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-
 async function fetchJson(path) {
-  const res = await fetch(API_BASE + path + `?ref=${GITHUB_BRANCH}`, {
-    headers: {
-      "Accept": "application/vnd.github+json",
-      "Cache-Control": "no-cache"
-    },
-    cache: "no-store"
-  });
+  const res = await fetch(RAW_BASE + path + `?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
-  const meta = await res.json();
-  const text = base64ToUtf8(meta.content);
-  return JSON.parse(text);
+  return res.json();
 }
 
 function faviconUrl(link) {
@@ -169,7 +154,7 @@ async function verifyToken(token) {
 }
 
 async function saveFileToGithub(path, jsonData, commitMessage) {
-  const getRes = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}`, { cache: "no-store" });
+  const getRes = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}`);
   let sha = undefined;
   if (getRes.status === 200) {
     const meta = await getRes.json();
@@ -221,6 +206,8 @@ async function persistCurrentCollection() {
   saveInFlight = true;
   setSaveIndicator("saving", "Saving…");
   try {
+    // currentCollection already reflects every edit made in this session,
+    // so we save it directly rather than re-fetching first.
     await saveFileToGithub(entry.file, currentCollection, `Update collection: ${currentCollection.title}`);
     hasUnsavedChanges = false;
     setSaveIndicator("saved", "All changes saved");
