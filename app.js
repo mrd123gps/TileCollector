@@ -87,7 +87,6 @@ const pasteClipboardBtn = document.getElementById("pasteClipboardBtn");
 const tileCollectionSelect = document.getElementById("tileCollectionSelect");
 const tileTitleInput = document.getElementById("tileTitleInput");
 const imgOptFavicon = document.getElementById("imgOptFavicon");
-const imgOptScreenshot = document.getElementById("imgOptScreenshot");
 const imgOptEmoji = document.getElementById("imgOptEmoji");
 const imgOptUpload = document.getElementById("imgOptUpload");
 const emojiPickerGroup = document.getElementById("emojiPickerGroup");
@@ -342,6 +341,8 @@ function buildTileFace(tile) {
     span.textContent = tile.imageData;
     face.appendChild(span);
   } else if (tile.imageType === "upload" || tile.imageType === "screenshot") {
+    // "screenshot" retained for read-compatibility with any tiles saved
+    // before this option was removed from the editor.
     const img = document.createElement("img");
     img.src = tile.imageData || "";
     img.alt = "";
@@ -993,7 +994,6 @@ function setLinkType(type) {
 
 function setImageOption(opt) {
   imgOptFavicon.checked = opt === "favicon";
-  imgOptScreenshot.checked = opt === "screenshot";
   imgOptEmoji.checked = opt === "emoji";
   imgOptUpload.checked = opt === "upload";
   emojiPickerGroup.hidden = opt !== "emoji";
@@ -1002,7 +1002,6 @@ function setImageOption(opt) {
 }
 
 function getSelectedImageOption() {
-  if (imgOptScreenshot.checked) return "screenshot";
   if (imgOptEmoji.checked) return "emoji";
   if (imgOptUpload.checked) return "upload";
   return "favicon";
@@ -1043,9 +1042,9 @@ function openTileEditPopup(tile) {
     setImageOption("emoji");
     selectedEmoji = tile.imageData || "";
     emojiPreview.textContent = selectedEmoji || "🙂";
-  } else if (tile.imageType === "screenshot") {
-    setImageOption("screenshot");
-  } else if (tile.imageType === "upload") {
+  } else if (tile.imageType === "upload" || tile.imageType === "screenshot") {
+    // A tile previously saved as "screenshot" is treated as an upload
+    // going forward, since that option no longer exists in the editor.
     setImageOption("upload");
     if (tile.imageData) {
       pendingUploadDataUrl = tile.imageData;
@@ -1077,7 +1076,7 @@ linkTypeCollectionBtn.addEventListener("click", () => {
 tileLinkInput.addEventListener("blur", autofillTitleFromUrl);
 tileCollectionSelect.addEventListener("change", autofillTitleFromCollection);
 
-[imgOptFavicon, imgOptScreenshot, imgOptEmoji, imgOptUpload].forEach(radio => {
+[imgOptFavicon, imgOptEmoji, imgOptUpload].forEach(radio => {
   radio.addEventListener("change", () => setImageOption(getSelectedImageOption()));
 });
 
@@ -1298,9 +1297,6 @@ tileEditSaveBtn.addEventListener("click", () => {
     }
     tile.imageType = "upload";
     tile.imageData = pendingUploadDataUrl;
-  } else if (imgOpt === "screenshot") {
-    tile.imageType = "screenshot";
-    tile.imageData = tile.imageData || null;
   } else {
     tile.imageType = "favicon";
     tile.imageData = null;
