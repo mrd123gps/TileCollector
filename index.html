@@ -37,7 +37,14 @@
         <button class="icon-btn dropdown-btn" id="switchCollectionBtn" title="Switch collection">
           <svg viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <div class="dropdown-menu" id="collectionDropdownMenu" hidden></div>
+        <div class="dropdown-menu" id="collectionDropdownMenu" hidden>
+          <div class="sort-row" id="sortRow">
+            <button class="sort-btn" id="sortAlphaBtn" data-sort="alpha">A–Z</button>
+            <button class="sort-btn" id="sortCountBtn" data-sort="count">⬢ #</button>
+            <button class="sort-btn" id="sortDateBtn" data-sort="date">◷ Date</button>
+          </div>
+          <div class="dropdown-list" id="dropdownList"></div>
+        </div>
       </div>
     </div>
     <div class="topbar-actions">

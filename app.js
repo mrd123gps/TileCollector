@@ -27,6 +27,10 @@ const addCollectionBtn = document.getElementById("addCollectionBtn");
 const addCollectionIcon = document.getElementById("addCollectionIcon");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
 const collectionDropdownMenu = document.getElementById("collectionDropdownMenu");
+const dropdownList = document.getElementById("dropdownList");
+const sortAlphaBtn = document.getElementById("sortAlphaBtn");
+const sortCountBtn = document.getElementById("sortCountBtn");
+const sortDateBtn = document.getElementById("sortDateBtn");
 const backupBtn = document.getElementById("backupBtn");
 const backupBanner = document.getElementById("backupBanner");
 const backupBannerText = document.getElementById("backupBannerText");
@@ -101,6 +105,7 @@ let autosaveTimer = null;
 let saveInFlight = false;
 let saveQueued = false;
 let hasUnsavedChanges = false;
+let currentSort = "alpha";
 
 /* ---------- Data loading via Netlify Function + Blobs ---------- */
 
@@ -172,12 +177,21 @@ function slugify(title) {
   return candidate;
 }
 
+function titleExists(title) {
+  const normalized = title.trim().toLowerCase();
+  return indexData.collections.some(c => c.title.trim().toLowerCase() === normalized);
+}
+
 function emptyCollectionData(id, title) {
   const tiles = [];
   for (let i = 0; i < 32; i++) {
     tiles.push({ position: i, link: null, title: null, imageType: null, imageData: null, linkedCollectionId: null });
   }
   return { id, title, tiles };
+}
+
+function countPopulatedTiles(collection) {
+  return collection.tiles.filter(t => t.link || t.linkedCollectionId).length;
 }
 
 function getTile(position) {
@@ -212,7 +226,16 @@ async function persistCurrentCollection() {
   saveQueued = false;
   setSaveIndicator("saving", "Saving…");
   try {
+    const nowIso = new Date().toISOString();
     await saveBlob(currentCollectionId, currentCollection);
+
+    const entry = indexData.collections.find(c => c.id === currentCollectionId);
+    if (entry) {
+      entry.lastModified = nowIso;
+      entry.tileCount = countPopulatedTiles(currentCollection);
+      await saveBlob("index", indexData);
+    }
+
     hasUnsavedChanges = false;
     setSaveIndicator("saved", "All changes saved");
     clearSaveIndicatorSoon();
@@ -397,11 +420,35 @@ async function loadCollection(collectionId) {
   }
 }
 
-/* ---------- Switch-collection dropdown (always active) ---------- */
+/* ---------- Switch-collection dropdown with sorting ---------- */
+
+function getSortedCollections() {
+  const list = [...indexData.collections];
+  if (currentSort === "count") {
+    list.sort((a, b) => {
+      const diff = (b.tileCount || 0) - (a.tileCount || 0);
+      return diff !== 0 ? diff : a.title.localeCompare(b.title);
+    });
+  } else if (currentSort === "date") {
+    list.sort((a, b) => {
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const diff = bTime - aTime;
+      return diff !== 0 ? diff : a.title.localeCompare(b.title);
+    });
+  } else {
+    list.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  return list;
+}
 
 function renderDropdownMenu() {
-  collectionDropdownMenu.innerHTML = "";
-  indexData.collections.forEach(c => {
+  [sortAlphaBtn, sortCountBtn, sortDateBtn].forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.sort === currentSort);
+  });
+
+  dropdownList.innerHTML = "";
+  getSortedCollections().forEach(c => {
     const item = document.createElement("button");
     item.className = "dropdown-item" + (c.id === currentCollectionId ? " active" : "");
     item.textContent = c.title;
@@ -409,9 +456,17 @@ function renderDropdownMenu() {
       collectionDropdownMenu.hidden = true;
       window.location.hash = c.id;
     });
-    collectionDropdownMenu.appendChild(item);
+    dropdownList.appendChild(item);
   });
 }
+
+[sortAlphaBtn, sortCountBtn, sortDateBtn].forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    currentSort = btn.dataset.sort;
+    renderDropdownMenu();
+  });
+});
 
 switchCollectionBtn.addEventListener("click", () => {
   renderDropdownMenu();
@@ -469,13 +524,27 @@ async function createNewCollection() {
     return;
   }
 
+  if (titleExists(title)) {
+    addCollectionError.textContent = `A collection named "${title}" already exists. Please choose a different name.`;
+    addCollectionError.hidden = false;
+    newCollectionTitleInput.focus();
+    newCollectionTitleInput.select();
+    return;
+  }
+
   const id = slugify(title);
   addCollectionCreateBtn.disabled = true;
   try {
     const newCollection = emptyCollectionData(id, title);
     await saveBlob(id, newCollection);
 
-    indexData.collections.push({ id, title, file: `collections/${id}.json` });
+    indexData.collections.push({
+      id,
+      title,
+      file: `collections/${id}.json`,
+      lastModified: new Date().toISOString(),
+      tileCount: 0
+    });
     await saveBlob("index", indexData);
 
     closeAddCollectionModal();
