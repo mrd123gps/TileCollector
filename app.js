@@ -1170,18 +1170,27 @@ imageDropzone.addEventListener("drop", (e) => {
   if (file) handleImageFile(file);
 });
 
-imageDropzone.addEventListener("paste", (e) => {
-  const items = e.clipboardData && e.clipboardData.items;
-  if (!items) return;
+function extractImageFileFromClipboard(clipboardData) {
+  if (!clipboardData) return null;
+  const items = clipboardData.items;
+  if (!items) return null;
   for (const item of items) {
-    if (item.type.startsWith("image/")) {
-      const file = item.getAsFile();
-      if (file) {
-        handleImageFile(file);
-        e.preventDefault();
-        break;
-      }
+    if (item.type && item.type.startsWith("image/")) {
+      return item.getAsFile();
     }
+  }
+  return null;
+}
+
+// Modal-wide paste listener: works regardless of which element inside
+// the tile-edit popup currently has focus, so Ctrl+V is not dependent
+// on the dropzone div itself retaining focus after a click/dialog.
+tileEditOverlay.addEventListener("paste", (e) => {
+  if (tileEditOverlay.hidden || uploadGroup.hidden) return;
+  const file = extractImageFileFromClipboard(e.clipboardData);
+  if (file) {
+    e.preventDefault();
+    handleImageFile(file);
   }
 });
 
