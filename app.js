@@ -27,6 +27,7 @@ const addCollectionBtn = document.getElementById("addCollectionBtn");
 const addCollectionIcon = document.getElementById("addCollectionIcon");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
 const collectionDropdownMenu = document.getElementById("collectionDropdownMenu");
+const mainDropdownItem = document.getElementById("mainDropdownItem");
 const dropdownList = document.getElementById("dropdownList");
 const sortAlphaBtn = document.getElementById("sortAlphaBtn");
 const sortCountBtn = document.getElementById("sortCountBtn");
@@ -146,6 +147,16 @@ function faviconUrl(link) {
   try {
     const url = new URL(link);
     return `https://www.google.com/s2/favicons?sz=64&domain=${url.hostname}`;
+  } catch (e) {
+    return "";
+  }
+}
+
+function simplifyDomain(link) {
+  try {
+    let host = new URL(link).hostname;
+    if (host.startsWith("www.")) host = host.slice(4);
+    return host;
   } catch (e) {
     return "";
   }
@@ -423,7 +434,7 @@ async function loadCollection(collectionId) {
 /* ---------- Switch-collection dropdown with sorting ---------- */
 
 function getSortedCollections() {
-  const list = [...indexData.collections];
+  const list = indexData.collections.filter(c => c.id !== MAIN_COLLECTION_ID);
   if (currentSort === "count") {
     list.sort((a, b) => {
       const diff = (b.tileCount || 0) - (a.tileCount || 0);
@@ -443,6 +454,8 @@ function getSortedCollections() {
 }
 
 function renderDropdownMenu() {
+  mainDropdownItem.classList.toggle("active", currentCollectionId === MAIN_COLLECTION_ID);
+
   [sortAlphaBtn, sortCountBtn, sortDateBtn].forEach(btn => {
     btn.classList.toggle("active", btn.dataset.sort === currentSort);
   });
@@ -459,6 +472,11 @@ function renderDropdownMenu() {
     dropdownList.appendChild(item);
   });
 }
+
+mainDropdownItem.addEventListener("click", () => {
+  collectionDropdownMenu.hidden = true;
+  window.location.hash = MAIN_COLLECTION_ID;
+});
 
 [sortAlphaBtn, sortCountBtn, sortDateBtn].forEach(btn => {
   btn.addEventListener("click", (e) => {
@@ -861,6 +879,18 @@ function getSelectedImageOption() {
   return "favicon";
 }
 
+function autofillTitleFromUrl() {
+  if (tileTitleInput.value.trim()) return;
+  const domain = simplifyDomain(normalizeUrl(tileLinkInput.value));
+  if (domain) tileTitleInput.value = domain;
+}
+
+function autofillTitleFromCollection() {
+  if (tileTitleInput.value.trim()) return;
+  const selected = indexData.collections.find(c => c.id === tileCollectionSelect.value);
+  if (selected) tileTitleInput.value = selected.title;
+}
+
 function openTileEditPopup(tile) {
   resetTileEditForm();
 
@@ -904,7 +934,13 @@ linkTypeUrlBtn.addEventListener("click", () => {
   setLinkType("url");
   tileLinkInput.focus();
 });
-linkTypeCollectionBtn.addEventListener("click", () => setLinkType("collection"));
+linkTypeCollectionBtn.addEventListener("click", () => {
+  setLinkType("collection");
+  autofillTitleFromCollection();
+});
+
+tileLinkInput.addEventListener("blur", autofillTitleFromUrl);
+tileCollectionSelect.addEventListener("change", autofillTitleFromCollection);
 
 [imgOptFavicon, imgOptScreenshot, imgOptEmoji, imgOptUpload].forEach(radio => {
   radio.addEventListener("change", () => setImageOption(getSelectedImageOption()));
@@ -926,6 +962,7 @@ pasteClipboardBtn.addEventListener("click", async () => {
   try {
     const text = await navigator.clipboard.readText();
     tileLinkInput.value = text.trim();
+    autofillTitleFromUrl();
   } catch (err) {
     tileEditError.textContent = "Could not read clipboard. Paste manually with Ctrl+V / Cmd+V.";
     tileEditError.hidden = false;
