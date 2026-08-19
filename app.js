@@ -147,10 +147,14 @@ async function githubApiRequest(path, options = {}) {
 }
 
 async function verifyToken(token) {
-  const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}`, {
-    headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" }
-  });
-  return res.ok;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}`, {
+      headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" }
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
 }
 
 async function saveFileToGithub(path, jsonData, commitMessage) {
@@ -389,7 +393,7 @@ async function loadCollection(collectionId) {
 
 /* ---------- Edit mode toggle ---------- */
 
-function enterEditMode() {
+async function enterEditMode() {
   isEditMode = true;
   panelEl.classList.add("edit-mode");
   editBadgeEl.hidden = false;
@@ -399,10 +403,19 @@ function enterEditMode() {
   switchCollectionBtn.disabled = false;
   renderCollection(currentCollection);
 
-  try {
-    const saved = sessionStorage.getItem("tc_gh_token");
-    if (saved) githubToken = saved;
-  } catch (e) {}
+  let saved = null;
+  try { saved = sessionStorage.getItem("tc_gh_token"); } catch (e) {}
+
+  if (saved) {
+    const stillValid = await verifyToken(saved);
+    if (stillValid) {
+      githubToken = saved;
+    } else {
+      githubToken = null;
+      try { sessionStorage.removeItem("tc_gh_token"); } catch (e) {}
+    }
+  }
+
   if (!githubToken) openTokenModal();
 }
 
