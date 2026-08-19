@@ -96,8 +96,11 @@ const openEmojiPickerBtn = document.getElementById("openEmojiPickerBtn");
 const emojiPickerWrap = document.getElementById("emojiPickerWrap");
 const emojiPickerEl = document.getElementById("emojiPickerEl");
 const uploadGroup = document.getElementById("uploadGroup");
+const imageDropzone = document.getElementById("imageDropzone");
+const dropzoneContent = document.getElementById("dropzoneContent");
 const imageUploadInput = document.getElementById("imageUploadInput");
 const uploadPreviewImg = document.getElementById("uploadPreviewImg");
+const clearUploadBtn = document.getElementById("clearUploadBtn");
 const tileEditError = document.getElementById("tileEditError");
 const tileEditCancelBtn = document.getElementById("tileEditCancelBtn");
 const tileEditSaveBtn = document.getElementById("tileEditSaveBtn");
@@ -948,6 +951,8 @@ function resetTileEditForm() {
   imageUploadInput.value = "";
   uploadPreviewImg.hidden = true;
   uploadPreviewImg.src = "";
+  dropzoneContent.hidden = false;
+  clearUploadBtn.hidden = true;
   pendingUploadDataUrl = null;
   selectedEmoji = "";
   emojiPreview.textContent = "🙂";
@@ -957,12 +962,14 @@ function resetTileEditForm() {
   setImageOption("favicon");
 
   tileCollectionSelect.innerHTML = "";
-  indexData.collections.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = c.title;
-    tileCollectionSelect.appendChild(opt);
-  });
+  indexData.collections
+    .filter(c => c.id !== currentCollectionId)
+    .forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.title;
+      tileCollectionSelect.appendChild(opt);
+    });
 }
 
 function setLinkType(type) {
@@ -1017,7 +1024,7 @@ function autofillTitleFromCollection() {
 function openTileEditPopup(tile) {
   resetTileEditForm();
 
-  if (tile.linkedCollectionId) {
+  if (tile.linkedCollectionId && tile.linkedCollectionId !== currentCollectionId) {
     setLinkType("collection");
     tileCollectionSelect.value = tile.linkedCollectionId;
   } else {
@@ -1037,8 +1044,7 @@ function openTileEditPopup(tile) {
     setImageOption("upload");
     if (tile.imageData) {
       pendingUploadDataUrl = tile.imageData;
-      uploadPreviewImg.src = tile.imageData;
-      uploadPreviewImg.hidden = false;
+      showUploadPreview(tile.imageData);
     }
   } else {
     setImageOption("favicon");
@@ -1092,9 +1098,31 @@ pasteClipboardBtn.addEventListener("click", async () => {
   }
 });
 
-imageUploadInput.addEventListener("change", () => {
-  const file = imageUploadInput.files[0];
-  if (!file) return;
+/* ---------- Upload dropzone: click, drag & drop, paste ---------- */
+
+function showUploadPreview(dataUrl) {
+  uploadPreviewImg.src = dataUrl;
+  uploadPreviewImg.hidden = false;
+  dropzoneContent.hidden = true;
+  clearUploadBtn.hidden = false;
+}
+
+function clearUploadPreview() {
+  pendingUploadDataUrl = null;
+  uploadPreviewImg.hidden = true;
+  uploadPreviewImg.src = "";
+  dropzoneContent.hidden = false;
+  clearUploadBtn.hidden = true;
+  imageUploadInput.value = "";
+}
+
+function handleImageFile(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    tileEditError.textContent = "That file isn't an image. Please choose an image file.";
+    tileEditError.hidden = false;
+    return;
+  }
+  tileEditError.hidden = true;
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
@@ -1108,12 +1136,58 @@ imageUploadInput.addEventListener("change", () => {
       const drawH = img.height * scale;
       ctx.drawImage(img, (MAX_UPLOAD_DIMENSION - drawW) / 2, (MAX_UPLOAD_DIMENSION - drawH) / 2, drawW, drawH);
       pendingUploadDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-      uploadPreviewImg.src = pendingUploadDataUrl;
-      uploadPreviewImg.hidden = false;
+      showUploadPreview(pendingUploadDataUrl);
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+imageDropzone.addEventListener("click", () => imageUploadInput.click());
+imageDropzone.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    imageUploadInput.click();
+  }
+});
+
+imageUploadInput.addEventListener("change", () => {
+  const file = imageUploadInput.files[0];
+  if (file) handleImageFile(file);
+});
+
+imageDropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  imageDropzone.classList.add("dragover");
+});
+imageDropzone.addEventListener("dragleave", () => {
+  imageDropzone.classList.remove("dragover");
+});
+imageDropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  imageDropzone.classList.remove("dragover");
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) handleImageFile(file);
+});
+
+imageDropzone.addEventListener("paste", (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) {
+        handleImageFile(file);
+        e.preventDefault();
+        break;
+      }
+    }
+  }
+});
+
+clearUploadBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  clearUploadPreview();
 });
 
 tileEditCancelBtn.addEventListener("click", closeTileEditPopup);
@@ -1137,6 +1211,11 @@ tileEditSaveBtn.addEventListener("click", () => {
     tile.link = linkVal;
     tile.linkedCollectionId = null;
   } else {
+    if (!tileCollectionSelect.value) {
+      tileEditError.textContent = "Please choose a collection to link to.";
+      tileEditError.hidden = false;
+      return;
+    }
     tile.linkedCollectionId = tileCollectionSelect.value;
     tile.link = null;
   }
@@ -1153,6 +1232,11 @@ tileEditSaveBtn.addEventListener("click", () => {
     tile.imageType = "emoji";
     tile.imageData = selectedEmoji;
   } else if (imgOpt === "upload") {
+    if (!pendingUploadDataUrl) {
+      tileEditError.textContent = "Please add an image (click, drag, or paste).";
+      tileEditError.hidden = false;
+      return;
+    }
     tile.imageType = "upload";
     tile.imageData = pendingUploadDataUrl;
   } else if (imgOpt === "screenshot") {

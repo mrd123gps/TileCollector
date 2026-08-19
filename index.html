@@ -148,7 +148,7 @@
   <div class="modal-box">
     <h3>Rename collection</h3>
     <input type="text" id="renameCollectionInput" placeholder="Collection title" maxlength="60">
-    <p class="modal-hint">Tiles elsewhere that link to this collection will still work — their own titles won't change automatically.</p>
+    <p class="modal-hint">Tiles elsewhere that link to this collection will have their titles updated automatically.</p>
     <p class="modal-error" id="renameCollectionError" hidden></p>
     <div class="modal-actions">
       <button class="btn-secondary" id="renameCollectionCancelBtn">Cancel</button>
@@ -227,10 +227,15 @@
     </div>
 
     <div id="uploadGroup" hidden>
-      <input type="file" id="imageUploadInput" accept="image/*">
-      <div class="upload-preview-wrap">
+      <div class="dropzone" id="imageDropzone" tabindex="0">
+        <input type="file" id="imageUploadInput" accept="image/*" hidden>
+        <div class="dropzone-content" id="dropzoneContent">
+          <svg viewBox="0 0 24 24" width="26" height="26" class="dropzone-icon"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p class="dropzone-text">Click to browse, drag a file here, or paste (Ctrl/Cmd+V)</p>
+        </div>
         <img id="uploadPreviewImg" class="upload-preview" hidden>
       </div>
+      <button class="btn-secondary full-width" id="clearUploadBtn" type="button" hidden>Remove image</button>
     </div>
 
     <p class="modal-error" id="tileEditError" hidden></p>
