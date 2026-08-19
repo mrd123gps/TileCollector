@@ -1,1 +1,12 @@
-//
+{
+  "collections": [
+    {"id": "main", "title": "Main", "file": "collections/main.json"},
+    {"id": "math", "title": "Math", "file": "collections/math.json"},
+    {"id": "english", "title": "English Language", "file": "collections/english.json"},
+    {"id": "science", "title": "Science", "file": "collections/science.json"},
+    {"id": "social-studies", "title": "Social Studies", "file": "collections/social-studies.json"},
+    {"id": "arts", "title": "The Arts", "file": "collections/arts.json"},
+    {"id": "hpe", "title": "Health & Physical Education", "file": "collections/hpe.json"},
+    {"id": "fsl", "title": "French as a Second Language", "file": "collections/fsl.json"}
+  ]
+}
