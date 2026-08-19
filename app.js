@@ -17,6 +17,7 @@ const saveIndicatorEl = document.getElementById("saveIndicator");
 const editModeBtn = document.getElementById("editModeBtn");
 const addCollectionBtn = document.getElementById("addCollectionBtn");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
+const collectionDropdownMenu = document.getElementById("collectionDropdownMenu");
 const backupBtn = document.getElementById("backupBtn");
 const backupBanner = document.getElementById("backupBanner");
 const backupBannerText = document.getElementById("backupBannerText");
@@ -40,6 +41,12 @@ const tileMenuCancelBtn = document.getElementById("tileMenuCancelBtn");
 const moveOverlay = document.getElementById("moveOverlay");
 const moveGridPreview = document.getElementById("moveGridPreview");
 const moveCancelBtn = document.getElementById("moveCancelBtn");
+
+const addCollectionOverlay = document.getElementById("addCollectionOverlay");
+const newCollectionTitleInput = document.getElementById("newCollectionTitleInput");
+const addCollectionError = document.getElementById("addCollectionError");
+const addCollectionCancelBtn = document.getElementById("addCollectionCancelBtn");
+const addCollectionCreateBtn = document.getElementById("addCollectionCreateBtn");
 
 const tileEditOverlay = document.getElementById("tileEditOverlay");
 const linkTypeUrlBtn = document.getElementById("linkTypeUrlBtn");
@@ -126,6 +133,27 @@ async function sha256Hex(text) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+function slugify(title) {
+  let base = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!base) base = "collection";
+  let candidate = base;
+  let n = 2;
+  const existingIds = new Set(indexData.collections.map(c => c.id));
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${n}`;
+    n++;
+  }
+  return candidate;
+}
+
+function emptyCollectionData(id, title) {
+  const tiles = [];
+  for (let i = 0; i < 32; i++) {
+    tiles.push({ position: i, link: null, title: null, imageType: null, imageData: null, linkedCollectionId: null });
+  }
+  return { id, title, tiles };
+}
+
 function getTile(position) {
   return currentCollection.tiles.find(t => t.position === position);
 }
@@ -134,7 +162,7 @@ function isTileEmpty(tile) {
   return !tile.link && !tile.linkedCollectionId;
 }
 
-/* ---------- Save layer (Blobs — no tokens, no sha, no conflicts) ---------- */
+/* ---------- Save layer (Blobs) ---------- */
 
 function setSaveIndicator(state, text) {
   saveIndicatorEl.hidden = false;
@@ -342,6 +370,87 @@ async function loadCollection(collectionId) {
   }
 }
 
+/* ---------- Switch-collection dropdown ---------- */
+
+function renderDropdownMenu() {
+  collectionDropdownMenu.innerHTML = "";
+  indexData.collections.forEach(c => {
+    const item = document.createElement("button");
+    item.className = "dropdown-item" + (c.id === currentCollectionId ? " active" : "");
+    item.textContent = c.title;
+    item.addEventListener("click", () => {
+      collectionDropdownMenu.hidden = true;
+      window.location.hash = c.id;
+    });
+    collectionDropdownMenu.appendChild(item);
+  });
+}
+
+switchCollectionBtn.addEventListener("click", () => {
+  if (switchCollectionBtn.disabled) return;
+  renderDropdownMenu();
+  collectionDropdownMenu.hidden = !collectionDropdownMenu.hidden;
+});
+
+document.addEventListener("click", (e) => {
+  if (!collectionDropdownMenu.hidden &&
+      !collectionDropdownMenu.contains(e.target) &&
+      e.target !== switchCollectionBtn) {
+    collectionDropdownMenu.hidden = true;
+  }
+});
+
+/* ---------- Add collection ---------- */
+
+function openAddCollectionModal() {
+  newCollectionTitleInput.value = "";
+  addCollectionError.hidden = true;
+  addCollectionOverlay.hidden = false;
+  newCollectionTitleInput.focus();
+}
+
+function closeAddCollectionModal() {
+  addCollectionOverlay.hidden = true;
+}
+
+async function createNewCollection() {
+  const title = newCollectionTitleInput.value.trim();
+  if (!title) {
+    addCollectionError.textContent = "Please enter a title.";
+    addCollectionError.hidden = false;
+    return;
+  }
+
+  const id = slugify(title);
+  addCollectionCreateBtn.disabled = true;
+  try {
+    const newCollection = emptyCollectionData(id, title);
+    await saveBlob(id, newCollection);
+
+    indexData.collections.push({ id, title, file: `collections/${id}.json` });
+    await saveBlob("index", indexData);
+
+    closeAddCollectionModal();
+    window.location.hash = id;
+  } catch (err) {
+    addCollectionError.textContent = "Could not create collection: " + err.message;
+    addCollectionError.hidden = false;
+  } finally {
+    addCollectionCreateBtn.disabled = false;
+  }
+}
+
+addCollectionBtn.addEventListener("click", openAddCollectionModal);
+addCollectionCancelBtn.addEventListener("click", closeAddCollectionModal);
+addCollectionCreateBtn.addEventListener("click", createNewCollection);
+newCollectionTitleInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") createNewCollection();
+  if (e.key === "Escape") closeAddCollectionModal();
+});
+addCollectionOverlay.addEventListener("click", (e) => {
+  if (e.target === addCollectionOverlay) closeAddCollectionModal();
+});
+
 /* ---------- Edit mode toggle ---------- */
 
 function enterEditMode() {
@@ -374,6 +483,7 @@ function exitEditMode() {
   switchCollectionBtn.disabled = true;
   backupBtn.hidden = true;
   backupBanner.hidden = true;
+  collectionDropdownMenu.hidden = true;
   renderCollection(currentCollection);
 }
 
@@ -710,7 +820,6 @@ tileEditSaveBtn.addEventListener("click", () => {
   } else if (imgOpt === "screenshot") {
     tile.imageType = "screenshot";
     tile.imageData = tile.imageData || null;
-    // Live screenshot fetching is not yet implemented; falls back to existing image if any.
   } else {
     tile.imageType = "favicon";
     tile.imageData = null;
