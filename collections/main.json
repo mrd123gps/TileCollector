@@ -44,25 +44,25 @@
     },
     {
       "position": 5,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://yahoo.ca",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
     {
       "position": 6,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://u.org",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
     {
       "position": 7,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://facebook.com",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
