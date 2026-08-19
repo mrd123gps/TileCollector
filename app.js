@@ -80,6 +80,7 @@ let selectedEmoji = "";
 let githubToken = null;
 let autosaveTimer = null;
 let saveInFlight = false;
+let saveQueued = false;
 let hasUnsavedChanges = false;
 
 /* ---------- Data loading (fast raw CDN reads) ---------- */
@@ -164,7 +165,8 @@ async function saveFileToGithub(path, jsonData, commitMessage) {
     const meta = await getRes.json();
     sha = meta.sha;
   } else if (getRes.status !== 404) {
-    throw new Error(`Could not read current file state (${getRes.status})`);
+    const errBody = await getRes.json().catch(() => ({}));
+    throw new Error(errBody.message || `Could not read current file state (${getRes.status})`);
   }
 
   const body = {
@@ -204,10 +206,19 @@ async function persistCurrentCollection() {
     openTokenModal();
     return;
   }
+
+  if (saveInFlight) {
+    // A save is already running. Don't start a second, overlapping one —
+    // just remember that another save is needed once this one finishes.
+    saveQueued = true;
+    return;
+  }
+
   const entry = indexData.collections.find(c => c.id === currentCollectionId);
   if (!entry) return;
 
   saveInFlight = true;
+  saveQueued = false;
   setSaveIndicator("saving", "Saving…");
   try {
     // currentCollection already reflects every edit made in this session,
@@ -217,10 +228,14 @@ async function persistCurrentCollection() {
     setSaveIndicator("saved", "All changes saved");
     clearSaveIndicatorSoon();
   } catch (err) {
-    console.error(err);
-    setSaveIndicator("error", "Save failed — check connection");
+    console.error("TileCollector save error:", err.message);
+    setSaveIndicator("error", "Save failed: " + err.message);
   } finally {
     saveInFlight = false;
+    if (saveQueued) {
+      saveQueued = false;
+      persistCurrentCollection();
+    }
   }
 }
 
