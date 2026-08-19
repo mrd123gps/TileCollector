@@ -3,38 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TileCollector</title>
+<title>Mr. D's Links</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="topbar">
-  <div class="collection-title-wrap">
-    <h1 id="collectionTitle">Loading…</h1>
-    <button class="icon-btn dropdown-btn" id="switchCollectionBtn" title="Switch collection" disabled>
-      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-  </div>
-  <div class="topbar-actions">
-    <button class="icon-btn add-btn" id="addCollectionBtn" title="Add collection" disabled>
-      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
-    <button class="icon-btn pencil-btn" id="editModeBtn" title="Edit collection" disabled>
-      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-  </div>
-</header>
+<div class="page-bg"></div>
 
-<main class="board" id="board">
-  <section class="grid" id="gridLeft" aria-label="Tile grid left"></section>
-  <div class="grid-gap" aria-hidden="true"></div>
-  <section class="grid" id="gridRight" aria-label="Tile grid right"></section>
-</main>
+<div class="panel">
 
-<div class="status-msg" id="statusMsg"></div>
+  <h1 class="site-title">Mr. D's Links</h1>
+
+  <header class="topbar">
+    <div class="collection-title-wrap">
+      <h2 id="collectionTitle">Loading…</h2>
+      <button class="icon-btn dropdown-btn" id="switchCollectionBtn" title="Switch collection" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn add-btn" id="addCollectionBtn" title="Add collection" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn pencil-btn" id="editModeBtn" title="Edit collection" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="board" id="board">
+    <section class="grid" id="gridLeft" aria-label="Tile grid left"></section>
+    <div class="grid-gap" aria-hidden="true"></div>
+    <section class="grid" id="gridRight" aria-label="Tile grid right"></section>
+  </main>
+
+  <div class="status-msg" id="statusMsg"></div>
+
+</div>
 
 <script src="app.js"></script>
 </body>
