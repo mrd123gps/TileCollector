@@ -63,13 +63,19 @@ async function putFile(path, token, content, commitMessage) {
     const errBody = await res.text();
     throw new Error(`GitHub PUT ${path} failed (${res.status}): ${errBody}`);
   }
+
+  return res.status;
 }
 
 export default async () => {
+  console.log("[backup-to-github] Invocation started.");
+
   const token = process.env.GITHUB_BACKUP_TOKEN;
   if (!token) {
+    console.error("[backup-to-github] GITHUB_BACKUP_TOKEN is not set.");
     return jsonResponse({ error: "GITHUB_BACKUP_TOKEN is not set in Netlify environment variables." }, 500);
   }
+  console.log(`[backup-to-github] Token present, length ${token.length}.`);
 
   const store = getStore({ name: STORE_NAME, consistency: "strong" });
   const timestamp = new Date().toISOString();
@@ -79,18 +85,22 @@ export default async () => {
   try {
     const indexData = await store.get("index", { type: "json" });
     if (!indexData || !Array.isArray(indexData.collections)) {
+      console.error("[backup-to-github] index.json missing or malformed in Blobs store.");
       return jsonResponse({ error: "Could not read 'index' from Blobs, or it has no collections list." }, 500);
     }
+    console.log(`[backup-to-github] Found ${indexData.collections.length} collections in index.`);
 
     try {
-      await putFile(
+      const status = await putFile(
         `${BACKUP_ROOT}/index.json`,
         token,
         JSON.stringify(indexData, null, 2),
         `Backup index.json — ${timestamp}`
       );
+      console.log(`[backup-to-github] index.json written, GitHub status ${status}.`);
       backedUp.push("index");
     } catch (err) {
+      console.error(`[backup-to-github] index.json FAILED: ${err.message}`);
       failed.push({ id: "index", error: err.message });
     }
 
@@ -99,22 +109,26 @@ export default async () => {
       try {
         const collectionData = await store.get(id, { type: "json" });
         if (collectionData === null) {
+          console.error(`[backup-to-github] Collection "${id}" not found in Blobs.`);
           failed.push({ id, error: "Not found in Blobs store." });
           continue;
         }
-        await putFile(
+        const status = await putFile(
           `${BACKUP_ROOT}/collections/${id}.json`,
           token,
           JSON.stringify(collectionData, null, 2),
           `Backup collection "${id}" — ${timestamp}`
         );
+        console.log(`[backup-to-github] Collection "${id}" written, GitHub status ${status}.`);
         backedUp.push(id);
       } catch (err) {
+        console.error(`[backup-to-github] Collection "${id}" FAILED: ${err.message}`);
         failed.push({ id, error: err.message });
       }
     }
 
     const allSucceeded = failed.length === 0;
+    console.log(`[backup-to-github] Done. Succeeded: ${backedUp.length}, Failed: ${failed.length}.`);
     return jsonResponse(
       {
         ok: allSucceeded,
@@ -125,6 +139,7 @@ export default async () => {
       allSucceeded ? 200 : 207
     );
   } catch (err) {
+    console.error(`[backup-to-github] Unhandled error: ${err.message}`);
     return jsonResponse({ error: err.message }, 500);
   }
 };
