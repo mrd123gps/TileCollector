@@ -52,9 +52,9 @@
     },
     {
       "position": 6,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://u.org",
+      "title": "",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
