@@ -88,6 +88,13 @@ function faviconUrl(link) {
   }
 }
 
+function normalizeUrl(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return "https://" + trimmed;
+}
+
 async function sha256Hex(text) {
   const enc = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest("SHA-256", enc);
@@ -537,7 +544,7 @@ tileEditSaveBtn.addEventListener("click", () => {
   tileEditError.hidden = true;
 
   if (linkType === "url") {
-    const linkVal = tileLinkInput.value.trim();
+    const linkVal = normalizeUrl(tileLinkInput.value);
     if (!linkVal) {
       tileEditError.textContent = "Please enter a link.";
       tileEditError.hidden = false;
