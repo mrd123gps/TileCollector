@@ -14,7 +14,7 @@ function corsHeaders() {
   };
 }
 
-async fetchRawJson(path) {
+async function fetchRawJson(path) {
   const res = await fetch(RAW_BASE + path + `?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Could not fetch ${path} (${res.status})`);
   return res.json();
