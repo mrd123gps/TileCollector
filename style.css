@@ -528,6 +528,47 @@ html, body {
   border: 1.5px solid var(--border);
 }
 
+/* Emoji picker */
+.emoji-chosen-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.emoji-preview {
+  font-size: 2rem;
+  line-height: 1;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.emoji-chosen-row .btn-secondary {
+  flex: 1;
+  margin: 0;
+}
+
+.emoji-picker-wrap {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+
+emoji-picker {
+  width: 100%;
+  max-width: 100%;
+  --num-columns: 7;
+  height: 320px;
+}
+
 @media (max-width: 720px) {
   :root {
     --tile-size: 78px;

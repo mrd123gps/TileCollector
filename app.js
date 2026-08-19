@@ -50,7 +50,10 @@ const imgOptScreenshot = document.getElementById("imgOptScreenshot");
 const imgOptEmoji = document.getElementById("imgOptEmoji");
 const imgOptUpload = document.getElementById("imgOptUpload");
 const emojiPickerGroup = document.getElementById("emojiPickerGroup");
-const emojiInput = document.getElementById("emojiInput");
+const emojiPreview = document.getElementById("emojiPreview");
+const openEmojiPickerBtn = document.getElementById("openEmojiPickerBtn");
+const emojiPickerWrap = document.getElementById("emojiPickerWrap");
+const emojiPickerEl = document.getElementById("emojiPickerEl");
 const uploadGroup = document.getElementById("uploadGroup");
 const imageUploadInput = document.getElementById("imageUploadInput");
 const uploadPreviewImg = document.getElementById("uploadPreviewImg");
@@ -63,6 +66,7 @@ let currentCollection = null;
 let isEditMode = false;
 let activeTilePosition = null;
 let pendingUploadDataUrl = null;
+let selectedEmoji = "";
 
 function getHashCollectionId() {
   const hash = window.location.hash.replace("#", "").trim();
@@ -380,11 +384,13 @@ function resetTileEditForm() {
   tileEditError.hidden = true;
   tileLinkInput.value = "";
   tileTitleInput.value = "";
-  emojiInput.value = "";
   imageUploadInput.value = "";
   uploadPreviewImg.hidden = true;
   uploadPreviewImg.src = "";
   pendingUploadDataUrl = null;
+  selectedEmoji = "";
+  emojiPreview.textContent = "🙂";
+  emojiPickerWrap.hidden = true;
   setLinkType("url");
   setImageOption("favicon");
 
@@ -418,6 +424,7 @@ function setImageOption(opt) {
   imgOptUpload.checked = opt === "upload";
   emojiPickerGroup.hidden = opt !== "emoji";
   uploadGroup.hidden = opt !== "upload";
+  if (opt !== "emoji") emojiPickerWrap.hidden = true;
 }
 
 function getSelectedImageOption() {
@@ -442,7 +449,8 @@ function openTileEditPopup(tile) {
 
   if (tile.imageType === "emoji") {
     setImageOption("emoji");
-    emojiInput.value = tile.imageData || "";
+    selectedEmoji = tile.imageData || "";
+    emojiPreview.textContent = selectedEmoji || "🙂";
   } else if (tile.imageType === "screenshot") {
     setImageOption("screenshot");
   } else if (tile.imageType === "upload") {
@@ -461,6 +469,7 @@ function openTileEditPopup(tile) {
 
 function closeTileEditPopup() {
   tileEditOverlay.hidden = true;
+  emojiPickerWrap.hidden = true;
 }
 
 linkTypeUrlBtn.addEventListener("click", () => setLinkType("url"));
@@ -469,6 +478,18 @@ linkTypeCollectionBtn.addEventListener("click", () => setLinkType("collection"))
 [imgOptFavicon, imgOptScreenshot, imgOptEmoji, imgOptUpload].forEach(radio => {
   radio.addEventListener("change", () => setImageOption(getSelectedImageOption()));
 });
+
+openEmojiPickerBtn.addEventListener("click", () => {
+  emojiPickerWrap.hidden = !emojiPickerWrap.hidden;
+});
+
+if (emojiPickerEl) {
+  emojiPickerEl.addEventListener("emoji-click", (event) => {
+    selectedEmoji = event.detail.unicode;
+    emojiPreview.textContent = selectedEmoji;
+    emojiPickerWrap.hidden = true;
+  });
+}
 
 pasteClipboardBtn.addEventListener("click", async () => {
   try {
@@ -533,8 +554,13 @@ tileEditSaveBtn.addEventListener("click", () => {
 
   const imgOpt = getSelectedImageOption();
   if (imgOpt === "emoji") {
+    if (!selectedEmoji) {
+      tileEditError.textContent = "Please choose an emoji.";
+      tileEditError.hidden = false;
+      return;
+    }
     tile.imageType = "emoji";
-    tile.imageData = emojiInput.value.trim();
+    tile.imageData = selectedEmoji;
   } else if (imgOpt === "upload") {
     tile.imageType = "upload";
     tile.imageData = pendingUploadDataUrl;

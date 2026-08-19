@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 </head>
 <body>
 
@@ -134,7 +135,13 @@
     </div>
 
     <div id="emojiPickerGroup" hidden>
-      <input type="text" id="emojiInput" placeholder="Paste an emoji, e.g. 📐" maxlength="4">
+      <div class="emoji-chosen-row">
+        <span class="emoji-preview" id="emojiPreview">🙂</span>
+        <button class="btn-secondary" id="openEmojiPickerBtn" type="button">Choose emoji…</button>
+      </div>
+      <div class="emoji-picker-wrap" id="emojiPickerWrap" hidden>
+        <emoji-picker id="emojiPickerEl"></emoji-picker>
+      </div>
     </div>
 
     <div id="uploadGroup" hidden>
