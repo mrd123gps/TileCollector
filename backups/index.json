@@ -1,0 +1,48 @@
+{
+  "collections": [
+    {
+      "id": "main",
+      "title": "Main",
+      "file": "collections/main.json",
+      "lastModified": "2026-08-19T22:38:26.684Z",
+      "tileCount": 11
+    },
+    {
+      "id": "math",
+      "title": "Math",
+      "file": "collections/math.json",
+      "lastModified": "2026-08-19T21:59:31.127Z",
+      "tileCount": 0
+    },
+    {
+      "id": "english",
+      "title": "English Language",
+      "file": "collections/english.json"
+    },
+    {
+      "id": "science",
+      "title": "Science",
+      "file": "collections/science.json"
+    },
+    {
+      "id": "social-studies",
+      "title": "Social Studies",
+      "file": "collections/social-studies.json"
+    },
+    {
+      "id": "arts",
+      "title": "The Arts",
+      "file": "collections/arts.json"
+    },
+    {
+      "id": "hpe",
+      "title": "Health & Physical Education",
+      "file": "collections/hpe.json"
+    },
+    {
+      "id": "fsl",
+      "title": "French as a Second Language",
+      "file": "collections/fsl.json"
+    }
+  ]
+}
