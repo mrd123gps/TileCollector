@@ -35,20 +35,20 @@
       <h2 id="collectionTitle">Loading…</h2>
       <div class="dropdown-wrap">
         <button class="icon-btn dropdown-btn" id="switchCollectionBtn" title="Switch collection">
-          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="dropdown-menu" id="collectionDropdownMenu" hidden></div>
       </div>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn backup-btn" id="backupBtn" title="Back up to GitHub" hidden>
-        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <button class="icon-btn add-btn" id="addCollectionBtn" title="Add collection" hidden>
-        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg id="addCollectionIcon" viewBox="0 0 24 24" width="20" height="20" style="pointer-events:none"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
       <button class="icon-btn pencil-btn" id="editModeBtn" title="Edit collection">
-        <svg id="editModeIcon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg id="editModeIcon" viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
   </header>
@@ -121,6 +121,28 @@
     <div class="modal-actions">
       <button class="btn-secondary" id="addCollectionCancelBtn">Cancel</button>
       <button class="btn-primary" id="addCollectionCreateBtn">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete collection: step 1 -->
+<div class="modal-overlay" id="deleteStep1Overlay" hidden>
+  <div class="modal-box">
+    <h3 class="danger-heading">Do you want to DELETE this collection?</h3>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="deleteStep1CancelBtn">Cancel</button>
+      <button class="btn-danger" id="deleteStep1YesBtn">Yes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete collection: step 2 -->
+<div class="modal-overlay" id="deleteStep2Overlay" hidden>
+  <div class="modal-box">
+    <h3 class="danger-heading" id="deleteStep2Text">Are you sure you want to delete collection "X"?</h3>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="deleteStep2NoBtn">No</button>
+      <button class="btn-danger" id="deleteStep2YesBtn" disabled>Yes (2)</button>
     </div>
   </div>
 </div>

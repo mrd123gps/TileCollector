@@ -1,4 +1,5 @@
 const PASSWORD_HASH = "cd6ca56c9b4d7a7a768c45542d035408ff610611a79efa2a10bf2da0006ec70f";
+const MAIN_COLLECTION_ID = "main";
 
 const API_BASE = "/api/collection";
 const BACKUP_API = "/api/backup-to-github";
@@ -6,9 +7,12 @@ const BACKUP_REMINDER_DAYS = 30;
 
 const MAX_UPLOAD_DIMENSION = 300;
 const AUTOSAVE_DELAY_MS = 800;
+const DELETE_CONFIRM_DELAY_MS = 2000;
 
 const PENCIL_ICON_PATH = '<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
 const EXIT_ICON_PATH = '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+const PLUS_ICON_PATH = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+const MINUS_ICON_PATH = '<path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
 
 const gridLeftEl = document.getElementById("gridLeft");
 const gridRightEl = document.getElementById("gridRight");
@@ -20,6 +24,7 @@ const saveIndicatorEl = document.getElementById("saveIndicator");
 const editModeBtn = document.getElementById("editModeBtn");
 const editModeIcon = document.getElementById("editModeIcon");
 const addCollectionBtn = document.getElementById("addCollectionBtn");
+const addCollectionIcon = document.getElementById("addCollectionIcon");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
 const collectionDropdownMenu = document.getElementById("collectionDropdownMenu");
 const backupBtn = document.getElementById("backupBtn");
@@ -51,6 +56,14 @@ const newCollectionTitleInput = document.getElementById("newCollectionTitleInput
 const addCollectionError = document.getElementById("addCollectionError");
 const addCollectionCancelBtn = document.getElementById("addCollectionCancelBtn");
 const addCollectionCreateBtn = document.getElementById("addCollectionCreateBtn");
+
+const deleteStep1Overlay = document.getElementById("deleteStep1Overlay");
+const deleteStep1CancelBtn = document.getElementById("deleteStep1CancelBtn");
+const deleteStep1YesBtn = document.getElementById("deleteStep1YesBtn");
+const deleteStep2Overlay = document.getElementById("deleteStep2Overlay");
+const deleteStep2Text = document.getElementById("deleteStep2Text");
+const deleteStep2NoBtn = document.getElementById("deleteStep2NoBtn");
+const deleteStep2YesBtn = document.getElementById("deleteStep2YesBtn");
 
 const tileEditOverlay = document.getElementById("tileEditOverlay");
 const linkTypeUrlBtn = document.getElementById("linkTypeUrlBtn");
@@ -111,6 +124,15 @@ async function saveBlob(key, data) {
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
     throw new Error(errBody.error || `Save failed (${res.status})`);
+  }
+  return res.json();
+}
+
+async function deleteBlob(key) {
+  const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || `Delete failed (${res.status})`);
   }
   return res.json();
 }
@@ -368,6 +390,7 @@ async function loadCollection(collectionId) {
     currentCollection = data;
     currentCollectionId = collectionId;
     renderCollection(data);
+    updateAddDeleteButton();
   } catch (err) {
     statusMsgEl.textContent = "Could not load this collection. Please try again later.";
     console.error(err);
@@ -400,6 +423,28 @@ document.addEventListener("click", (e) => {
       !collectionDropdownMenu.contains(e.target) &&
       e.target !== switchCollectionBtn) {
     collectionDropdownMenu.hidden = true;
+  }
+});
+
+/* ---------- Add / Delete collection button (context-sensitive) ---------- */
+
+function updateAddDeleteButton() {
+  if (currentCollectionId === MAIN_COLLECTION_ID) {
+    addCollectionIcon.innerHTML = PLUS_ICON_PATH;
+    addCollectionBtn.title = "Add collection";
+    addCollectionBtn.dataset.mode = "add";
+  } else {
+    addCollectionIcon.innerHTML = MINUS_ICON_PATH;
+    addCollectionBtn.title = "Delete this collection";
+    addCollectionBtn.dataset.mode = "delete";
+  }
+}
+
+addCollectionBtn.addEventListener("click", () => {
+  if (addCollectionBtn.dataset.mode === "delete") {
+    openDeleteStep1();
+  } else {
+    openAddCollectionModal();
   }
 });
 
@@ -443,7 +488,6 @@ async function createNewCollection() {
   }
 }
 
-addCollectionBtn.addEventListener("click", openAddCollectionModal);
 addCollectionCancelBtn.addEventListener("click", closeAddCollectionModal);
 addCollectionCreateBtn.addEventListener("click", createNewCollection);
 newCollectionTitleInput.addEventListener("keydown", (e) => {
@@ -452,6 +496,67 @@ newCollectionTitleInput.addEventListener("keydown", (e) => {
 });
 addCollectionOverlay.addEventListener("click", (e) => {
   if (e.target === addCollectionOverlay) closeAddCollectionModal();
+});
+
+/* ---------- Delete collection (two-step confirm) ---------- */
+
+function openDeleteStep1() {
+  deleteStep1Overlay.hidden = false;
+}
+
+function closeDeleteStep1() {
+  deleteStep1Overlay.hidden = true;
+}
+
+function openDeleteStep2() {
+  closeDeleteStep1();
+  deleteStep2Text.textContent = `Are you sure you want to delete collection "${currentCollection.title}"?`;
+  deleteStep2YesBtn.disabled = true;
+  deleteStep2YesBtn.textContent = "Yes (2)";
+  deleteStep2Overlay.hidden = false;
+
+  let secondsLeft = DELETE_CONFIRM_DELAY_MS / 1000;
+  const countdown = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(countdown);
+      deleteStep2YesBtn.disabled = false;
+      deleteStep2YesBtn.textContent = "Yes, delete";
+    } else {
+      deleteStep2YesBtn.textContent = `Yes (${secondsLeft})`;
+    }
+  }, 1000);
+}
+
+function closeDeleteStep2() {
+  deleteStep2Overlay.hidden = true;
+}
+
+async function performDelete() {
+  const idToDelete = currentCollectionId;
+  deleteStep2YesBtn.disabled = true;
+  try {
+    await deleteBlob(idToDelete);
+    indexData.collections = indexData.collections.filter(c => c.id !== idToDelete);
+    await saveBlob("index", indexData);
+    closeDeleteStep2();
+    window.location.hash = MAIN_COLLECTION_ID;
+  } catch (err) {
+    alert("Could not delete collection: " + err.message);
+    deleteStep2YesBtn.disabled = false;
+  }
+}
+
+deleteStep1CancelBtn.addEventListener("click", closeDeleteStep1);
+deleteStep1YesBtn.addEventListener("click", openDeleteStep2);
+deleteStep1Overlay.addEventListener("click", (e) => {
+  if (e.target === deleteStep1Overlay) closeDeleteStep1();
+});
+
+deleteStep2NoBtn.addEventListener("click", closeDeleteStep2);
+deleteStep2YesBtn.addEventListener("click", performDelete);
+deleteStep2Overlay.addEventListener("click", (e) => {
+  if (e.target === deleteStep2Overlay) closeDeleteStep2();
 });
 
 /* ---------- Edit mode toggle ---------- */
@@ -465,6 +570,7 @@ function enterEditMode() {
   editModeIcon.innerHTML = EXIT_ICON_PATH;
   addCollectionBtn.hidden = false;
   backupBtn.hidden = false;
+  updateAddDeleteButton();
   renderCollection(currentCollection);
   checkBackupReminder();
 }

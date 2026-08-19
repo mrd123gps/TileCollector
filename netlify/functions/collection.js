@@ -5,7 +5,7 @@ const STORE_NAME = "tilecollector-data";
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type"
   };
 }
@@ -52,6 +52,27 @@ export default async (req, context) => {
     try {
       const body = await req.json();
       await store.setJSON(key, body);
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders() }
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders() }
+      });
+    }
+  }
+
+  if (req.method === "DELETE") {
+    if (key === "main" || key === "index") {
+      return new Response(JSON.stringify({ error: "This key cannot be deleted." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders() }
+      });
+    }
+    try {
+      await store.delete(key);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders() }
