@@ -161,6 +161,11 @@ html, body {
   position: relative;
 }
 
+.rename-btn {
+  width: 32px;
+  height: 32px;
+}
+
 .dropdown-menu {
   position: absolute;
   top: 46px;

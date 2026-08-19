@@ -32,6 +32,7 @@ const dropdownList = document.getElementById("dropdownList");
 const sortAlphaBtn = document.getElementById("sortAlphaBtn");
 const sortCountBtn = document.getElementById("sortCountBtn");
 const sortDateBtn = document.getElementById("sortDateBtn");
+const renameCollectionBtn = document.getElementById("renameCollectionBtn");
 const backupBtn = document.getElementById("backupBtn");
 const backupBanner = document.getElementById("backupBanner");
 const backupBannerText = document.getElementById("backupBannerText");
@@ -61,6 +62,12 @@ const newCollectionTitleInput = document.getElementById("newCollectionTitleInput
 const addCollectionError = document.getElementById("addCollectionError");
 const addCollectionCancelBtn = document.getElementById("addCollectionCancelBtn");
 const addCollectionCreateBtn = document.getElementById("addCollectionCreateBtn");
+
+const renameCollectionOverlay = document.getElementById("renameCollectionOverlay");
+const renameCollectionInput = document.getElementById("renameCollectionInput");
+const renameCollectionError = document.getElementById("renameCollectionError");
+const renameCollectionCancelBtn = document.getElementById("renameCollectionCancelBtn");
+const renameCollectionSaveBtn = document.getElementById("renameCollectionSaveBtn");
 
 const deleteStep1Overlay = document.getElementById("deleteStep1Overlay");
 const deleteStep1CancelBtn = document.getElementById("deleteStep1CancelBtn");
@@ -107,6 +114,7 @@ let saveInFlight = false;
 let saveQueued = false;
 let hasUnsavedChanges = false;
 let currentSort = "alpha";
+let lastAutofilledTitle = "";
 
 /* ---------- Data loading via Netlify Function + Blobs ---------- */
 
@@ -188,9 +196,9 @@ function slugify(title) {
   return candidate;
 }
 
-function titleExists(title) {
+function titleExists(title, excludeId) {
   const normalized = title.trim().toLowerCase();
-  return indexData.collections.some(c => c.title.trim().toLowerCase() === normalized);
+  return indexData.collections.some(c => c.id !== excludeId && c.title.trim().toLowerCase() === normalized);
 }
 
 function emptyCollectionData(id, title) {
@@ -425,6 +433,7 @@ async function loadCollection(collectionId) {
     currentCollectionId = collectionId;
     renderCollection(data);
     updateAddDeleteButton();
+    updateRenameButtonVisibility();
   } catch (err) {
     statusMsgEl.textContent = "Could not load this collection. Please try again later.";
     console.error(err);
@@ -542,7 +551,7 @@ async function createNewCollection() {
     return;
   }
 
-  if (titleExists(title)) {
+  if (titleExists(title, null)) {
     addCollectionError.textContent = `A collection named "${title}" already exists. Please choose a different name.`;
     addCollectionError.hidden = false;
     newCollectionTitleInput.focus();
@@ -583,6 +592,111 @@ newCollectionTitleInput.addEventListener("keydown", (e) => {
 });
 addCollectionOverlay.addEventListener("click", (e) => {
   if (e.target === addCollectionOverlay) closeAddCollectionModal();
+});
+
+/* ---------- Rename collection (with cascading tile-title updates) ---------- */
+
+function updateRenameButtonVisibility() {
+  renameCollectionBtn.hidden = !(isEditMode && currentCollectionId !== MAIN_COLLECTION_ID);
+}
+
+function openRenameCollectionModal() {
+  renameCollectionInput.value = currentCollection.title;
+  renameCollectionError.hidden = true;
+  renameCollectionSaveBtn.disabled = false;
+  renameCollectionSaveBtn.textContent = "Save";
+  renameCollectionOverlay.hidden = false;
+  renameCollectionInput.focus();
+  renameCollectionInput.select();
+}
+
+function closeRenameCollectionModal() {
+  renameCollectionOverlay.hidden = true;
+}
+
+async function propagateRenameToLinkedTiles(renamedId, newTitle) {
+  const otherEntries = indexData.collections.filter(c => c.id !== renamedId);
+
+  const results = await Promise.all(otherEntries.map(async (entry) => {
+    try {
+      const isCurrentlyLoaded = entry.id === currentCollectionId;
+      const data = isCurrentlyLoaded ? currentCollection : await fetchBlob(entry.id);
+      let changed = false;
+      data.tiles.forEach(t => {
+        if (t.linkedCollectionId === renamedId && t.title !== newTitle) {
+          t.title = newTitle;
+          changed = true;
+        }
+      });
+      if (changed && !isCurrentlyLoaded) {
+        await saveBlob(entry.id, data);
+        entry.lastModified = new Date().toISOString();
+        entry.tileCount = countPopulatedTiles(data);
+      } else if (changed && isCurrentlyLoaded) {
+        renderCollection(currentCollection);
+      }
+      return changed;
+    } catch (err) {
+      console.error(`Could not update linked tiles in "${entry.id}":`, err.message);
+      return false;
+    }
+  }));
+
+  return results.some(Boolean);
+}
+
+async function saveRenamedCollection() {
+  const newTitle = renameCollectionInput.value.trim();
+  if (!newTitle) {
+    renameCollectionError.textContent = "Please enter a title.";
+    renameCollectionError.hidden = false;
+    return;
+  }
+
+  if (titleExists(newTitle, currentCollectionId)) {
+    renameCollectionError.textContent = `A collection named "${newTitle}" already exists. Please choose a different name.`;
+    renameCollectionError.hidden = false;
+    renameCollectionInput.focus();
+    renameCollectionInput.select();
+    return;
+  }
+
+  const renamedId = currentCollectionId;
+  renameCollectionSaveBtn.disabled = true;
+  renameCollectionSaveBtn.textContent = "Saving…";
+  try {
+    currentCollection.title = newTitle;
+    await saveBlob(renamedId, currentCollection);
+
+    const entry = indexData.collections.find(c => c.id === renamedId);
+    if (entry) {
+      entry.title = newTitle;
+      entry.lastModified = new Date().toISOString();
+    }
+
+    await propagateRenameToLinkedTiles(renamedId, newTitle);
+    await saveBlob("index", indexData);
+
+    collectionTitleEl.textContent = newTitle;
+    closeRenameCollectionModal();
+  } catch (err) {
+    renameCollectionError.textContent = "Could not rename: " + err.message;
+    renameCollectionError.hidden = false;
+  } finally {
+    renameCollectionSaveBtn.disabled = false;
+    renameCollectionSaveBtn.textContent = "Save";
+  }
+}
+
+renameCollectionBtn.addEventListener("click", openRenameCollectionModal);
+renameCollectionCancelBtn.addEventListener("click", closeRenameCollectionModal);
+renameCollectionSaveBtn.addEventListener("click", saveRenamedCollection);
+renameCollectionInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveRenamedCollection();
+  if (e.key === "Escape") closeRenameCollectionModal();
+});
+renameCollectionOverlay.addEventListener("click", (e) => {
+  if (e.target === renameCollectionOverlay) closeRenameCollectionModal();
 });
 
 /* ---------- Delete collection (two-step confirm) ---------- */
@@ -658,6 +772,7 @@ function enterEditMode() {
   addCollectionBtn.hidden = false;
   backupBtn.hidden = false;
   updateAddDeleteButton();
+  updateRenameButtonVisibility();
   renderCollection(currentCollection);
   checkBackupReminder();
 }
@@ -680,6 +795,7 @@ function exitEditMode() {
   backupBtn.hidden = true;
   backupBanner.hidden = true;
   collectionDropdownMenu.hidden = true;
+  updateRenameButtonVisibility();
   renderCollection(currentCollection);
 }
 
@@ -836,6 +952,7 @@ function resetTileEditForm() {
   selectedEmoji = "";
   emojiPreview.textContent = "🙂";
   emojiPickerWrap.hidden = true;
+  lastAutofilledTitle = "";
   setLinkType("url");
   setImageOption("favicon");
 
@@ -879,16 +996,22 @@ function getSelectedImageOption() {
   return "favicon";
 }
 
+function applyAutofill(newValue) {
+  const current = tileTitleInput.value.trim();
+  if (current === "" || current === lastAutofilledTitle) {
+    tileTitleInput.value = newValue;
+    lastAutofilledTitle = newValue;
+  }
+}
+
 function autofillTitleFromUrl() {
-  if (tileTitleInput.value.trim()) return;
   const domain = simplifyDomain(normalizeUrl(tileLinkInput.value));
-  if (domain) tileTitleInput.value = domain;
+  if (domain) applyAutofill(domain);
 }
 
 function autofillTitleFromCollection() {
-  if (tileTitleInput.value.trim()) return;
   const selected = indexData.collections.find(c => c.id === tileCollectionSelect.value);
-  if (selected) tileTitleInput.value = selected.title;
+  if (selected) applyAutofill(selected.title);
 }
 
 function openTileEditPopup(tile) {

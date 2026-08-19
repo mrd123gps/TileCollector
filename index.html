@@ -47,13 +47,16 @@
             <div class="sort-row" id="sortRow">
               <button class="sort-btn" id="sortAlphaBtn" data-sort="alpha">A–Z</button>
               <button class="sort-btn" id="sortCountBtn" data-sort="count">#</button>
-              <button class="sort-btn" id="sortDateBtn" data-sort="date">◷ Date</button>
+              <button class="sort-btn" id="sortDateBtn" data-sort="date">Date</button>
             </div>
             <div class="dropdown-divider"></div>
           </div>
           <div class="dropdown-list" id="dropdownList"></div>
         </div>
       </div>
+      <button class="icon-btn rename-btn" id="renameCollectionBtn" title="Rename this collection" hidden>
+        <svg viewBox="0 0 24 24" width="16" height="16" style="pointer-events:none"><path d="M12 4v16M8 4h8M8 20h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn backup-btn" id="backupBtn" title="Back up to GitHub" hidden>
@@ -136,6 +139,20 @@
     <div class="modal-actions">
       <button class="btn-secondary" id="addCollectionCancelBtn">Cancel</button>
       <button class="btn-primary" id="addCollectionCreateBtn">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename collection modal -->
+<div class="modal-overlay" id="renameCollectionOverlay" hidden>
+  <div class="modal-box">
+    <h3>Rename collection</h3>
+    <input type="text" id="renameCollectionInput" placeholder="Collection title" maxlength="60">
+    <p class="modal-hint">Tiles elsewhere that link to this collection will still work — their own titles won't change automatically.</p>
+    <p class="modal-error" id="renameCollectionError" hidden></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="renameCollectionCancelBtn">Cancel</button>
+      <button class="btn-primary" id="renameCollectionSaveBtn">Save</button>
     </div>
   </div>
 </div>
