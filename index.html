@@ -13,9 +13,12 @@
 
 <div class="page-bg"></div>
 
-<div class="panel">
+<div class="panel" id="panel">
 
-  <h1 class="site-title">Mr. D's Links</h1>
+  <div class="site-title-row">
+    <h1 class="site-title">Mr. D's Links</h1>
+    <span class="edit-badge" id="editBadge" hidden>Editing</span>
+  </div>
 
   <header class="topbar">
     <div class="collection-title-wrap">
@@ -25,10 +28,10 @@
       </button>
     </div>
     <div class="topbar-actions">
-      <button class="icon-btn add-btn" id="addCollectionBtn" title="Add collection" disabled>
+      <button class="icon-btn add-btn" id="addCollectionBtn" title="Add collection" disabled hidden>
         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <button class="icon-btn pencil-btn" id="editModeBtn" title="Edit collection" disabled>
+      <button class="icon-btn pencil-btn" id="editModeBtn" title="Edit collection">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -42,6 +45,18 @@
 
   <div class="status-msg" id="statusMsg"></div>
 
+</div>
+
+<div class="modal-overlay" id="passwordOverlay" hidden>
+  <div class="modal-box">
+    <h3>Enter password to edit</h3>
+    <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+    <p class="modal-error" id="passwordError" hidden>Incorrect password.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="passwordCancelBtn">Cancel</button>
+      <button class="btn-primary" id="passwordSubmitBtn">Unlock</button>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>

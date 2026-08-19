@@ -3,6 +3,7 @@
   --text: #1e2430;
   --text-muted: #6b7280;
   --accent: #4a6cf7;
+  --accent-soft: #eef1ff;
   --border: #e3e6ec;
   --tile-size: 108px;
   --tile-gap: 14px;
@@ -40,6 +41,21 @@ html, body {
   -webkit-backdrop-filter: blur(6px);
   border-radius: 28px;
   box-shadow: 0 8px 40px rgba(20, 24, 40, 0.18);
+  border: 3px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.panel.edit-mode {
+  border-color: var(--accent);
+}
+
+.site-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 4px 0 28px;
+  flex-wrap: wrap;
 }
 
 .site-title {
@@ -48,8 +64,19 @@ html, body {
   font-size: 2.6rem;
   text-align: center;
   letter-spacing: -0.02em;
-  margin: 4px 0 28px;
+  margin: 0;
   color: var(--text);
+}
+
+.edit-badge {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
 }
 
 .topbar {
@@ -99,6 +126,11 @@ html, body {
   cursor: default;
 }
 
+.icon-btn.active {
+  color: #fff;
+  background: var(--accent);
+}
+
 .topbar-actions {
   display: flex;
   gap: 10px;
@@ -137,6 +169,24 @@ html, body {
 .tile.empty {
   visibility: hidden;
   pointer-events: none;
+}
+
+.panel.edit-mode .tile.empty {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.panel.edit-mode .tile.empty .tile-face {
+  background: rgba(74, 108, 247, 0.06);
+  border: 2px dashed rgba(74, 108, 247, 0.35);
+  box-shadow: none;
+}
+
+.panel.edit-mode .tile.empty .tile-face::after {
+  content: "+";
+  font-size: 1.8rem;
+  color: var(--accent);
+  opacity: 0.6;
 }
 
 .tile-face {
@@ -205,6 +255,89 @@ html, body {
   padding-bottom: 10px;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 26px;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 12px 40px rgba(20,24,40,0.25);
+  font-family: 'Inter', sans-serif;
+}
+
+.modal-box h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+.modal-box input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+
+.modal-box input:focus {
+  border-color: var(--accent);
+}
+
+.modal-error {
+  color: #d64545;
+  font-size: 0.82rem;
+  margin: 8px 0 0;
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-primary, .btn-secondary {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--border);
+  color: var(--text);
+}
+
+.btn-primary:hover, .btn-secondary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
 @media (max-width: 720px) {
   :root {
     --tile-size: 78px;
@@ -219,6 +352,9 @@ html, body {
 
   .site-title {
     font-size: 1.9rem;
+  }
+
+  .site-title-row {
     margin-bottom: 20px;
   }
 

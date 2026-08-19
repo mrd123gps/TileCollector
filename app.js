@@ -4,13 +4,27 @@ const GITHUB_BRANCH = "main";
 
 const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
 
+const PASSWORD_HASH = "cd6ca56c9b4d7a7a768c45542d035408ff610611a79efa2a10bf2da0006ec70f";
+
 const gridLeftEl = document.getElementById("gridLeft");
 const gridRightEl = document.getElementById("gridRight");
 const collectionTitleEl = document.getElementById("collectionTitle");
 const statusMsgEl = document.getElementById("statusMsg");
+const panelEl = document.getElementById("panel");
+const editBadgeEl = document.getElementById("editBadge");
+const editModeBtn = document.getElementById("editModeBtn");
+const addCollectionBtn = document.getElementById("addCollectionBtn");
+const switchCollectionBtn = document.getElementById("switchCollectionBtn");
+
+const passwordOverlay = document.getElementById("passwordOverlay");
+const passwordInput = document.getElementById("passwordInput");
+const passwordError = document.getElementById("passwordError");
+const passwordSubmitBtn = document.getElementById("passwordSubmitBtn");
+const passwordCancelBtn = document.getElementById("passwordCancelBtn");
 
 let indexData = null;
 let currentCollection = null;
+let isEditMode = false;
 
 function getHashCollectionId() {
   const hash = window.location.hash.replace("#", "").trim();
@@ -30,6 +44,12 @@ function faviconUrl(link) {
   } catch (e) {
     return "";
   }
+}
+
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function buildTileFace(tile) {
@@ -78,20 +98,30 @@ function buildTileElement(tile) {
     titleEl.className = "tile-title";
     titleEl.textContent = tile.title || "";
     el.appendChild(titleEl);
-
-    el.addEventListener("click", () => handleTileClick(tile));
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleTileClick(tile);
-      }
-    });
+  } else {
+    el.appendChild(buildTileFace(tile));
+    const titleEl = document.createElement("div");
+    titleEl.className = "tile-title";
+    el.appendChild(titleEl);
   }
+
+  el.addEventListener("click", () => handleTileClick(tile));
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleTileClick(tile);
+    }
+  });
 
   return el;
 }
 
 function handleTileClick(tile) {
+  if (isEditMode) {
+    // Placeholder: Stage 2 will wire up tile-edit popup / tile menu here.
+    console.log("Edit-mode tile click (not yet wired):", tile);
+    return;
+  }
   if (tile.linkedCollectionId) {
     window.location.hash = tile.linkedCollectionId;
   } else if (tile.link) {
@@ -132,6 +162,68 @@ async function loadCollection(collectionId) {
     console.error(err);
   }
 }
+
+function enterEditMode() {
+  isEditMode = true;
+  panelEl.classList.add("edit-mode");
+  editBadgeEl.hidden = false;
+  editModeBtn.classList.add("active");
+  addCollectionBtn.hidden = false;
+  addCollectionBtn.disabled = false;
+  switchCollectionBtn.disabled = false;
+}
+
+function exitEditMode() {
+  isEditMode = false;
+  panelEl.classList.remove("edit-mode");
+  editBadgeEl.hidden = true;
+  editModeBtn.classList.remove("active");
+  addCollectionBtn.hidden = true;
+  addCollectionBtn.disabled = true;
+  switchCollectionBtn.disabled = true;
+}
+
+function openPasswordModal() {
+  passwordInput.value = "";
+  passwordError.hidden = true;
+  passwordOverlay.hidden = false;
+  passwordInput.focus();
+}
+
+function closePasswordModal() {
+  passwordOverlay.hidden = true;
+}
+
+async function attemptUnlock() {
+  const entered = passwordInput.value;
+  const hash = await sha256Hex(entered);
+  if (hash === PASSWORD_HASH) {
+    closePasswordModal();
+    enterEditMode();
+  } else {
+    passwordError.hidden = false;
+    passwordInput.value = "";
+    passwordInput.focus();
+  }
+}
+
+editModeBtn.addEventListener("click", () => {
+  if (isEditMode) {
+    exitEditMode();
+  } else {
+    openPasswordModal();
+  }
+});
+
+passwordSubmitBtn.addEventListener("click", attemptUnlock);
+passwordCancelBtn.addEventListener("click", closePasswordModal);
+passwordInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") attemptUnlock();
+  if (e.key === "Escape") closePasswordModal();
+});
+passwordOverlay.addEventListener("click", (e) => {
+  if (e.target === passwordOverlay) closePasswordModal();
+});
 
 async function init() {
   try {
