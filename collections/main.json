@@ -44,9 +44,9 @@
     },
     {
       "position": 5,
-      "link": "https://facebook.com",
-      "title": "",
-      "imageType": "favicon",
+      "link": null,
+      "title": null,
+      "imageType": null,
       "imageData": null,
       "linkedCollectionId": null
     },
