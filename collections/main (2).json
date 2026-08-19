@@ -3,7 +3,7 @@
   "title": "Main",
   "tiles": [
     {"position": 0, "link": "https://drive.google.com", "title": "Google Drive", "imageType": "favicon", "imageData": null, "linkedCollectionId": null},
-    {"position": 1, "link": "https://classroom.google.com", "title": "Google Classroom", "imageType": "favicon", "imageData": null, "linkedCollectionId": null},
+    {"position": 1, "link": "https://classroom.google.com", "title": "Googley Classroomy", "imageType": "favicon", "imageData": null, "linkedCollectionId": null},
     {"position": 2, "link": "https://education.eb.com/", "title": "Britannica School", "imageType": "favicon", "imageData": null, "linkedCollectionId": null},
     {"position": 3, "link": "https://scratch.mit.edu/", "title": "Scratch", "imageType": "favicon", "imageData": null, "linkedCollectionId": null},
     {"position": 4, "link": null, "title": null, "imageType": null, "imageData": null, "linkedCollectionId": null},
