@@ -1,11 +1,8 @@
-const GITHUB_USER = "mrd123gps";
-const GITHUB_REPO = "TileCollector";
-const GITHUB_BRANCH = "main";
-
-const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
-const API_BASE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`;
-
 const PASSWORD_HASH = "cd6ca56c9b4d7a7a768c45542d035408ff610611a79efa2a10bf2da0006ec70f";
+
+const API_BASE = "/api/collection";
+const BACKUP_API = "/api/backup-to-github";
+const BACKUP_REMINDER_DAYS = 30;
 
 const MAX_UPLOAD_DIMENSION = 300;
 const AUTOSAVE_DELAY_MS = 800;
@@ -20,18 +17,17 @@ const saveIndicatorEl = document.getElementById("saveIndicator");
 const editModeBtn = document.getElementById("editModeBtn");
 const addCollectionBtn = document.getElementById("addCollectionBtn");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
+const backupBtn = document.getElementById("backupBtn");
+const backupBanner = document.getElementById("backupBanner");
+const backupBannerText = document.getElementById("backupBannerText");
+const backupBannerDismiss = document.getElementById("backupBannerDismiss");
+const backupBannerRun = document.getElementById("backupBannerRun");
 
 const passwordOverlay = document.getElementById("passwordOverlay");
 const passwordInput = document.getElementById("passwordInput");
 const passwordError = document.getElementById("passwordError");
 const passwordSubmitBtn = document.getElementById("passwordSubmitBtn");
 const passwordCancelBtn = document.getElementById("passwordCancelBtn");
-
-const tokenOverlay = document.getElementById("tokenOverlay");
-const tokenInput = document.getElementById("tokenInput");
-const tokenError = document.getElementById("tokenError");
-const tokenSubmitBtn = document.getElementById("tokenSubmitBtn");
-const tokenCancelBtn = document.getElementById("tokenCancelBtn");
 
 const tileMenuOverlay = document.getElementById("tileMenuOverlay");
 const tileMenuTitle = document.getElementById("tileMenuTitle");
@@ -77,22 +73,34 @@ let isEditMode = false;
 let activeTilePosition = null;
 let pendingUploadDataUrl = null;
 let selectedEmoji = "";
-let githubToken = null;
 let autosaveTimer = null;
 let saveInFlight = false;
 let saveQueued = false;
 let hasUnsavedChanges = false;
 
-/* ---------- Data loading (fast raw CDN reads) ---------- */
+/* ---------- Data loading via Netlify Function + Blobs ---------- */
 
 function getHashCollectionId() {
   const hash = window.location.hash.replace("#", "").trim();
   return hash || null;
 }
 
-async function fetchJson(path) {
-  const res = await fetch(RAW_BASE + path + `?t=${Date.now()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+async function fetchBlob(key) {
+  const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to fetch "${key}": ${res.status}`);
+  return res.json();
+}
+
+async function saveBlob(key, data) {
+  const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || `Save failed (${res.status})`);
+  }
   return res.json();
 }
 
@@ -126,81 +134,7 @@ function isTileEmpty(tile) {
   return !tile.link && !tile.linkedCollectionId;
 }
 
-/* ---------- GitHub write layer ---------- */
-
-function utf8ToBase64(str) {
-  const bytes = new TextEncoder().encode(str);
-  let binary = "";
-  bytes.forEach(b => binary += String.fromCharCode(b));
-  return btoa(binary);
-}
-
-async function githubApiRequest(path, options = {}) {
-  const res = await fetch(API_BASE + path, {
-    ...options,
-    cache: "no-store",
-    headers: {
-      "Authorization": `token ${githubToken}`,
-      "Accept": "application/vnd.github+json",
-      ...(options.headers || {})
-    }
-  });
-  return res;
-}
-
-async function verifyToken(token) {
-  try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}`, {
-      cache: "no-store",
-      headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github+json" }
-    });
-    return res.ok;
-  } catch (e) {
-    return false;
-  }
-}
-
-async function getLatestSha(path) {
-  const res = await githubApiRequest(`${path}?ref=${GITHUB_BRANCH}&_=${Date.now()}`);
-  if (res.status === 200) {
-    const meta = await res.json();
-    return meta.sha;
-  } else if (res.status === 404) {
-    return undefined;
-  } else {
-    const errBody = await res.json().catch(() => ({}));
-    throw new Error(errBody.message || `Could not read current file state (${res.status})`);
-  }
-}
-
-async function saveFileToGithub(path, jsonData, commitMessage, retriesLeft = 2) {
-  const sha = await getLatestSha(path);
-
-  const body = {
-    message: commitMessage,
-    content: utf8ToBase64(JSON.stringify(jsonData, null, 2)),
-    branch: GITHUB_BRANCH
-  };
-  if (sha) body.sha = sha;
-
-  const putRes = await githubApiRequest(path, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-
-  if (putRes.status === 409 && retriesLeft > 0) {
-    // Someone else changed the file between our GET and PUT (or a cache
-    // served a stale sha). Re-fetch the latest sha and try again.
-    return saveFileToGithub(path, jsonData, commitMessage, retriesLeft - 1);
-  }
-
-  if (!putRes.ok) {
-    const errBody = await putRes.json().catch(() => ({}));
-    throw new Error(errBody.message || `Save failed (${putRes.status})`);
-  }
-  return putRes.json();
-}
+/* ---------- Save layer (Blobs — no tokens, no sha, no conflicts) ---------- */
 
 function setSaveIndicator(state, text) {
   saveIndicatorEl.hidden = false;
@@ -215,24 +149,16 @@ function clearSaveIndicatorSoon() {
 }
 
 async function persistCurrentCollection() {
-  if (!githubToken) {
-    openTokenModal();
-    return;
-  }
-
   if (saveInFlight) {
     saveQueued = true;
     return;
   }
 
-  const entry = indexData.collections.find(c => c.id === currentCollectionId);
-  if (!entry) return;
-
   saveInFlight = true;
   saveQueued = false;
   setSaveIndicator("saving", "Saving…");
   try {
-    await saveFileToGithub(entry.file, currentCollection, `Update collection: ${currentCollection.title}`);
+    await saveBlob(currentCollectionId, currentCollection);
     hasUnsavedChanges = false;
     setSaveIndicator("saved", "All changes saved");
     clearSaveIndicatorSoon();
@@ -262,43 +188,44 @@ window.addEventListener("beforeunload", (e) => {
   }
 });
 
-/* ---------- Token modal ---------- */
+/* ---------- Monthly GitHub backup reminder ---------- */
 
-function openTokenModal() {
-  tokenInput.value = "";
-  tokenError.hidden = true;
-  tokenOverlay.hidden = false;
-  tokenInput.focus();
+function daysSince(dateStr) {
+  if (!dateStr) return Infinity;
+  const then = new Date(dateStr).getTime();
+  return (Date.now() - then) / (1000 * 60 * 60 * 24);
 }
 
-function closeTokenModal() {
-  tokenOverlay.hidden = true;
-}
-
-tokenSubmitBtn.addEventListener("click", async () => {
-  const token = tokenInput.value.trim();
-  if (!token) return;
-  tokenSubmitBtn.disabled = true;
-  const valid = await verifyToken(token);
-  tokenSubmitBtn.disabled = false;
-  if (valid) {
-    githubToken = token;
-    try { sessionStorage.setItem("tc_gh_token", token); } catch (e) {}
-    closeTokenModal();
-    if (hasUnsavedChanges) persistCurrentCollection();
-  } else {
-    tokenError.hidden = false;
+function checkBackupReminder() {
+  let lastBackup = null;
+  try { lastBackup = localStorage.getItem("tc_last_backup"); } catch (e) {}
+  if (daysSince(lastBackup) >= BACKUP_REMINDER_DAYS) {
+    const dayText = lastBackup ? `${Math.floor(daysSince(lastBackup))} days ago` : "never";
+    backupBannerText.textContent = `Last GitHub backup: ${dayText}. Back up now?`;
+    backupBanner.hidden = false;
   }
-});
+}
 
-tokenCancelBtn.addEventListener("click", closeTokenModal);
-tokenInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") tokenSubmitBtn.click();
-  if (e.key === "Escape") closeTokenModal();
-});
-tokenOverlay.addEventListener("click", (e) => {
-  if (e.target === tokenOverlay) closeTokenModal();
-});
+async function runBackup() {
+  backupBannerRun.disabled = true;
+  backupBannerRun.textContent = "Backing up…";
+  try {
+    const res = await fetch(BACKUP_API, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Backup failed");
+    try { localStorage.setItem("tc_last_backup", new Date().toISOString()); } catch (e) {}
+    backupBanner.hidden = true;
+  } catch (err) {
+    alert("Backup failed: " + err.message);
+  } finally {
+    backupBannerRun.disabled = false;
+    backupBannerRun.textContent = "Back up now";
+  }
+}
+
+backupBtn.addEventListener("click", runBackup);
+backupBannerRun.addEventListener("click", runBackup);
+backupBannerDismiss.addEventListener("click", () => { backupBanner.hidden = true; });
 
 /* ---------- Tile rendering ---------- */
 
@@ -405,7 +332,7 @@ async function loadCollection(collectionId) {
     return;
   }
   try {
-    const data = await fetchJson(entry.file);
+    const data = await fetchBlob(collectionId);
     currentCollection = data;
     currentCollectionId = collectionId;
     renderCollection(data);
@@ -417,7 +344,7 @@ async function loadCollection(collectionId) {
 
 /* ---------- Edit mode toggle ---------- */
 
-async function enterEditMode() {
+function enterEditMode() {
   isEditMode = true;
   panelEl.classList.add("edit-mode");
   editBadgeEl.hidden = false;
@@ -425,22 +352,9 @@ async function enterEditMode() {
   addCollectionBtn.hidden = false;
   addCollectionBtn.disabled = false;
   switchCollectionBtn.disabled = false;
+  backupBtn.hidden = false;
   renderCollection(currentCollection);
-
-  let saved = null;
-  try { saved = sessionStorage.getItem("tc_gh_token"); } catch (e) {}
-
-  if (saved) {
-    const stillValid = await verifyToken(saved);
-    if (stillValid) {
-      githubToken = saved;
-    } else {
-      githubToken = null;
-      try { sessionStorage.removeItem("tc_gh_token"); } catch (e) {}
-    }
-  }
-
-  if (!githubToken) openTokenModal();
+  checkBackupReminder();
 }
 
 function exitEditMode() {
@@ -458,6 +372,8 @@ function exitEditMode() {
   addCollectionBtn.hidden = true;
   addCollectionBtn.disabled = true;
   switchCollectionBtn.disabled = true;
+  backupBtn.hidden = true;
+  backupBanner.hidden = true;
   renderCollection(currentCollection);
 }
 
@@ -809,7 +725,7 @@ tileEditSaveBtn.addEventListener("click", () => {
 
 async function init() {
   try {
-    indexData = await fetchJson("collections/index.json");
+    indexData = await fetchBlob("index");
   } catch (err) {
     statusMsgEl.textContent = "Could not load TileCollector data. Check your connection and try again.";
     console.error(err);
