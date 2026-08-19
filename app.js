@@ -7,6 +7,9 @@ const BACKUP_REMINDER_DAYS = 30;
 const MAX_UPLOAD_DIMENSION = 300;
 const AUTOSAVE_DELAY_MS = 800;
 
+const PENCIL_ICON_PATH = '<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+const EXIT_ICON_PATH = '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+
 const gridLeftEl = document.getElementById("gridLeft");
 const gridRightEl = document.getElementById("gridRight");
 const collectionTitleEl = document.getElementById("collectionTitle");
@@ -15,6 +18,7 @@ const panelEl = document.getElementById("panel");
 const editBadgeEl = document.getElementById("editBadge");
 const saveIndicatorEl = document.getElementById("saveIndicator");
 const editModeBtn = document.getElementById("editModeBtn");
+const editModeIcon = document.getElementById("editModeIcon");
 const addCollectionBtn = document.getElementById("addCollectionBtn");
 const switchCollectionBtn = document.getElementById("switchCollectionBtn");
 const collectionDropdownMenu = document.getElementById("collectionDropdownMenu");
@@ -370,7 +374,7 @@ async function loadCollection(collectionId) {
   }
 }
 
-/* ---------- Switch-collection dropdown ---------- */
+/* ---------- Switch-collection dropdown (always active) ---------- */
 
 function renderDropdownMenu() {
   collectionDropdownMenu.innerHTML = "";
@@ -387,7 +391,6 @@ function renderDropdownMenu() {
 }
 
 switchCollectionBtn.addEventListener("click", () => {
-  if (switchCollectionBtn.disabled) return;
   renderDropdownMenu();
   collectionDropdownMenu.hidden = !collectionDropdownMenu.hidden;
 });
@@ -458,9 +461,9 @@ function enterEditMode() {
   panelEl.classList.add("edit-mode");
   editBadgeEl.hidden = false;
   editModeBtn.classList.add("active");
+  editModeBtn.title = "Exit edit mode";
+  editModeIcon.innerHTML = EXIT_ICON_PATH;
   addCollectionBtn.hidden = false;
-  addCollectionBtn.disabled = false;
-  switchCollectionBtn.disabled = false;
   backupBtn.hidden = false;
   renderCollection(currentCollection);
   checkBackupReminder();
@@ -478,9 +481,9 @@ function exitEditMode() {
   panelEl.classList.remove("edit-mode");
   editBadgeEl.hidden = true;
   editModeBtn.classList.remove("active");
+  editModeBtn.title = "Edit collection";
+  editModeIcon.innerHTML = PENCIL_ICON_PATH;
   addCollectionBtn.hidden = true;
-  addCollectionBtn.disabled = true;
-  switchCollectionBtn.disabled = true;
   backupBtn.hidden = true;
   backupBanner.hidden = true;
   collectionDropdownMenu.hidden = true;
