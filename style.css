@@ -814,6 +814,125 @@ emoji-picker {
   height: 320px;
 }
 
+/* Import modal */
+.import-box {
+  max-width: 460px;
+}
+
+.import-box textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  margin-bottom: 12px;
+  resize: vertical;
+}
+
+.import-box textarea:focus {
+  border-color: var(--accent);
+}
+
+.import-box textarea[readonly] {
+  background: #f4f6fb;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  min-height: 90px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.import-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  max-height: 260px;
+  display: block;
+  overflow-y: auto;
+}
+
+.import-preview-table thead, .import-preview-table tbody {
+  display: block;
+}
+
+.import-preview-table tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.import-preview-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1.5px solid var(--border);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.import-preview-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 0.84rem;
+}
+
+.import-preview-table td.fav-col {
+  width: 30px;
+}
+
+.import-preview-table td.fav-col img {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.import-preview-table td.url-col {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.import-title-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.84rem;
+  color: var(--text);
+  padding: 3px 4px;
+  border-radius: 6px;
+  outline: none;
+}
+
+.import-title-input:focus, .import-title-input:hover {
+  background: var(--accent-soft);
+}
+
+.import-count-badge {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
 @media (max-width: 720px) {
   :root {
     --tile-size: 78px;

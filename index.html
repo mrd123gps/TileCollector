@@ -59,6 +59,9 @@
       </button>
     </div>
     <div class="topbar-actions">
+      <button class="icon-btn import-btn" id="importBtn" title="Import from OneTab list" hidden>
+        <svg viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <button class="icon-btn backup-btn" id="backupBtn" title="Back up to GitHub" hidden>
         <svg viewBox="0 0 24 24" width="18" height="18" style="pointer-events:none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -246,6 +249,51 @@
     <div class="modal-actions">
       <button class="btn-secondary" id="tileEditCancelBtn">Cancel</button>
       <button class="btn-primary" id="tileEditSaveBtn">Save tile</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import from OneTab list -->
+<div class="modal-overlay" id="importOverlay" hidden>
+  <div class="modal-box import-box">
+    <h3>Import links</h3>
+    <p class="modal-hint">Paste your OneTab "Copy to clipboard" list below. Any of these line formats work: <code>URL | Title</code>, <code>[Title](URL)</code>, or <code>[URL](URL) | Title</code>.</p>
+
+    <textarea id="importTextarea" placeholder="https://example.com | Title"></textarea>
+
+    <p class="modal-error" id="importParseError" hidden></p>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="importParseBtn" type="button">Parse links</button>
+    </div>
+
+    <div id="importPreviewSection" hidden>
+      <div id="importCountBadgeWrap"></div>
+      <table class="import-preview-table">
+        <thead>
+          <tr><th></th><th>Title</th><th>URL</th></tr>
+        </thead>
+        <tbody id="importPreviewBody"></tbody>
+      </table>
+    </div>
+
+    <div id="importOverflowSection" hidden>
+      <p class="modal-error" id="importOverflowText"></p>
+      <div class="btn-row">
+        <button class="btn-primary" id="importOverflowProceedBtn" type="button">Proceed</button>
+        <button class="btn-secondary" id="importOverflowCancelBtn" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <div id="importLeftoverSection" hidden>
+      <p class="modal-hint">Links that didn't fit — copy these for later:</p>
+      <textarea id="importLeftoverTextarea" readonly></textarea>
+      <button class="btn-secondary" id="importCopyLeftoverBtn" type="button">Copy leftover links</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="importCancelBtn" type="button">Cancel</button>
+      <button class="btn-primary" id="importConfirmBtn" type="button" hidden>Import</button>
     </div>
   </div>
 </div>

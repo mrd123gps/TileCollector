@@ -8,6 +8,7 @@ const BACKUP_REMINDER_DAYS = 30;
 const MAX_UPLOAD_DIMENSION = 300;
 const AUTOSAVE_DELAY_MS = 800;
 const DELETE_CONFIRM_DELAY_MS = 2000;
+const MAX_TILES = 32;
 
 const PENCIL_ICON_PATH = '<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
 const EXIT_ICON_PATH = '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -33,6 +34,7 @@ const sortAlphaBtn = document.getElementById("sortAlphaBtn");
 const sortCountBtn = document.getElementById("sortCountBtn");
 const sortDateBtn = document.getElementById("sortDateBtn");
 const renameCollectionBtn = document.getElementById("renameCollectionBtn");
+const importBtn = document.getElementById("importBtn");
 const backupBtn = document.getElementById("backupBtn");
 const backupBanner = document.getElementById("backupBanner");
 const backupBannerText = document.getElementById("backupBannerText");
@@ -107,6 +109,23 @@ const tileEditError = document.getElementById("tileEditError");
 const tileEditCancelBtn = document.getElementById("tileEditCancelBtn");
 const tileEditSaveBtn = document.getElementById("tileEditSaveBtn");
 
+const importOverlay = document.getElementById("importOverlay");
+const importTextarea = document.getElementById("importTextarea");
+const importParseError = document.getElementById("importParseError");
+const importParseBtn = document.getElementById("importParseBtn");
+const importPreviewSection = document.getElementById("importPreviewSection");
+const importCountBadgeWrap = document.getElementById("importCountBadgeWrap");
+const importPreviewBody = document.getElementById("importPreviewBody");
+const importOverflowSection = document.getElementById("importOverflowSection");
+const importOverflowText = document.getElementById("importOverflowText");
+const importOverflowProceedBtn = document.getElementById("importOverflowProceedBtn");
+const importOverflowCancelBtn = document.getElementById("importOverflowCancelBtn");
+const importLeftoverSection = document.getElementById("importLeftoverSection");
+const importLeftoverTextarea = document.getElementById("importLeftoverTextarea");
+const importCopyLeftoverBtn = document.getElementById("importCopyLeftoverBtn");
+const importCancelBtn = document.getElementById("importCancelBtn");
+const importConfirmBtn = document.getElementById("importConfirmBtn");
+
 let indexData = null;
 let currentCollection = null;
 let currentCollectionId = null;
@@ -121,6 +140,8 @@ let saveQueued = false;
 let hasUnsavedChanges = false;
 let currentSort = "alpha";
 let lastAutofilledTitle = "";
+let importParsedLinks = [];
+let importLinksToApply = [];
 
 /* ---------- Data loading via Netlify Function + Blobs ---------- */
 
@@ -209,7 +230,7 @@ function titleExists(title, excludeId) {
 
 function emptyCollectionData(id, title) {
   const tiles = [];
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < MAX_TILES; i++) {
     tiles.push({ position: i, link: null, title: null, imageType: null, imageData: null, linkedCollectionId: null });
   }
   return { id, title, tiles };
@@ -341,8 +362,6 @@ function buildTileFace(tile) {
     span.textContent = tile.imageData;
     face.appendChild(span);
   } else if (tile.imageType === "upload" || tile.imageType === "screenshot") {
-    // "screenshot" retained for read-compatibility with any tiles saved
-    // before this option was removed from the editor.
     const img = document.createElement("img");
     img.src = tile.imageData || "";
     img.alt = "";
@@ -413,7 +432,7 @@ function renderCollection(collection) {
   gridRightEl.innerHTML = "";
 
   const tiles = collection.tiles || [];
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < MAX_TILES; i++) {
     let tile = tiles.find(t => t.position === i);
     if (!tile) {
       tile = { position: i, link: null, title: null, imageType: null, imageData: null, linkedCollectionId: null };
@@ -442,6 +461,7 @@ async function loadCollection(collectionId) {
     renderCollection(data);
     updateAddDeleteButton();
     updateRenameButtonVisibility();
+    updateImportButtonVisibility();
   } catch (err) {
     statusMsgEl.textContent = "Could not load this collection. Please try again later.";
     console.error(err);
@@ -781,6 +801,7 @@ function enterEditMode() {
   backupBtn.hidden = false;
   updateAddDeleteButton();
   updateRenameButtonVisibility();
+  updateImportButtonVisibility();
   renderCollection(currentCollection);
   checkBackupReminder();
 }
@@ -804,6 +825,7 @@ function exitEditMode() {
   backupBanner.hidden = true;
   collectionDropdownMenu.hidden = true;
   updateRenameButtonVisibility();
+  updateImportButtonVisibility();
   renderCollection(currentCollection);
 }
 
@@ -899,7 +921,7 @@ tileMenuOverlay.addEventListener("click", (e) => {
 
 function openMovePicker() {
   moveGridPreview.innerHTML = "";
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < MAX_TILES; i++) {
     const slot = document.createElement("div");
     slot.className = "move-slot";
     if (i === activeTilePosition) {
@@ -1043,8 +1065,6 @@ function openTileEditPopup(tile) {
     selectedEmoji = tile.imageData || "";
     emojiPreview.textContent = selectedEmoji || "🙂";
   } else if (tile.imageType === "upload" || tile.imageType === "screenshot") {
-    // A tile previously saved as "screenshot" is treated as an upload
-    // going forward, since that option no longer exists in the editor.
     setImageOption("upload");
     if (tile.imageData) {
       pendingUploadDataUrl = tile.imageData;
@@ -1303,6 +1323,246 @@ tileEditSaveBtn.addEventListener("click", () => {
   }
 
   closeTileEditPopup();
+  renderCollection(currentCollection);
+  markUnsaved();
+});
+
+/* ---------- Import from OneTab-style list ---------- */
+
+function updateImportButtonVisibility() {
+  importBtn.hidden = !isEditMode;
+}
+
+function unescapeMarkdown(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\\" && i + 1 < text.length) {
+      out += text[i + 1];
+      i++;
+    } else {
+      out += text[i];
+    }
+  }
+  return out;
+}
+
+// Supports three line formats, tried in order per line:
+//   Format A: [Title](https://example.com)
+//   Format B: [https://example.com](https://example.com) | Title
+//   Format C: https://example.com | Title   (plain OneTab clipboard export)
+const IMPORT_FORMAT_A = /^\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)\s*$/;
+const IMPORT_FORMAT_B = /^\[[^\]]*\]\((https?:\/\/[^\s)]+)\)\s*\|\s*(.+)$/;
+const IMPORT_FORMAT_C = /^(https?:\/\/\S+)\s*\|\s*(.+)$/;
+
+function parseImportLinks(raw) {
+  const normalized = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+  const results = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const matchB = line.match(IMPORT_FORMAT_B);
+    if (matchB) {
+      const url = matchB[1].trim();
+      const title = unescapeMarkdown(matchB[2]).trim();
+      results.push({ title: title || url, url });
+      continue;
+    }
+
+    const matchA = line.match(IMPORT_FORMAT_A);
+    if (matchA) {
+      const title = unescapeMarkdown(matchA[1]).trim();
+      const url = matchA[2].trim();
+      results.push({ title: title || url, url });
+      continue;
+    }
+
+    const matchC = line.match(IMPORT_FORMAT_C);
+    if (matchC) {
+      const url = matchC[1].trim();
+      const title = unescapeMarkdown(matchC[2]).trim();
+      results.push({ title: title || url, url });
+      continue;
+    }
+  }
+
+  return results;
+}
+
+function resetImportModal() {
+  importTextarea.value = "";
+  importParseError.hidden = true;
+  importPreviewSection.hidden = true;
+  importOverflowSection.hidden = true;
+  importLeftoverSection.hidden = true;
+  importConfirmBtn.hidden = true;
+  importParseBtn.hidden = false;
+  importParsedLinks = [];
+  importLinksToApply = [];
+}
+
+function openImportModal() {
+  resetImportModal();
+  importOverlay.hidden = false;
+  importTextarea.focus();
+}
+
+function closeImportModal() {
+  importOverlay.hidden = true;
+}
+
+importBtn.addEventListener("click", openImportModal);
+importCancelBtn.addEventListener("click", closeImportModal);
+importOverlay.addEventListener("click", (e) => {
+  if (e.target === importOverlay) closeImportModal();
+});
+
+importParseBtn.addEventListener("click", () => {
+  importParseError.hidden = true;
+  try {
+    const raw = importTextarea.value.trim();
+    if (!raw) {
+      importParseError.textContent = "Paste some links first.";
+      importParseError.hidden = false;
+      return;
+    }
+    const links = parseImportLinks(raw);
+    if (links.length === 0) {
+      importParseError.textContent = "No links found. Supported formats:\nhttps://example.com | Title\n[Title](https://example.com)\n[https://example.com](https://example.com) | Title";
+      importParseError.hidden = false;
+      return;
+    }
+    importParsedLinks = links;
+    renderImportPreview();
+  } catch (err) {
+    importParseError.textContent = "Unexpected error: " + err.message;
+    importParseError.hidden = false;
+    console.error(err);
+  }
+});
+
+function renderImportPreview() {
+  importPreviewBody.innerHTML = "";
+  importParsedLinks.forEach((link, idx) => {
+    const tr = document.createElement("tr");
+
+    const favCell = document.createElement("td");
+    favCell.className = "fav-col";
+    const img = document.createElement("img");
+    img.src = faviconUrl(link.url);
+    img.alt = "";
+    favCell.appendChild(img);
+
+    const titleCell = document.createElement("td");
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.className = "import-title-input";
+    titleInput.value = link.title;
+    titleInput.addEventListener("input", () => {
+      importParsedLinks[idx].title = titleInput.value;
+    });
+    titleCell.appendChild(titleInput);
+
+    const urlCell = document.createElement("td");
+    urlCell.className = "url-col";
+    urlCell.textContent = link.url;
+    urlCell.title = link.url;
+
+    tr.appendChild(favCell);
+    tr.appendChild(titleCell);
+    tr.appendChild(urlCell);
+    importPreviewBody.appendChild(tr);
+  });
+
+  importCountBadgeWrap.innerHTML = "";
+  const badge = document.createElement("span");
+  badge.className = "import-count-badge";
+  badge.textContent = `${importParsedLinks.length} link${importParsedLinks.length === 1 ? "" : "s"} found — click any title to edit`;
+  importCountBadgeWrap.appendChild(badge);
+
+  importPreviewSection.hidden = false;
+  importParseBtn.hidden = true;
+
+  evaluateImportCapacity();
+}
+
+function evaluateImportCapacity() {
+  const existingCount = countPopulatedTiles(currentCollection);
+  const newCount = importParsedLinks.length;
+  const space = MAX_TILES - existingCount;
+
+  importOverflowSection.hidden = true;
+  importLeftoverSection.hidden = true;
+
+  if (newCount > space) {
+    importOverflowText.textContent =
+      `This collection has ${existingCount} tile${existingCount === 1 ? "" : "s"} filled, ` +
+      `leaving room for ${space}. You're trying to add ${newCount} link${newCount === 1 ? "" : "s"}.`;
+    importOverflowSection.hidden = false;
+    importConfirmBtn.hidden = true;
+
+    importOverflowProceedBtn.textContent = `Proceed to add ${space} out of ${newCount} links.`;
+    importOverflowProceedBtn.onclick = () => {
+      importLinksToApply = importParsedLinks.slice(0, space);
+      const leftover = importParsedLinks.slice(space);
+      showLeftoverLinks(leftover);
+      importOverflowSection.hidden = true;
+      importConfirmBtn.hidden = false;
+    };
+    importOverflowCancelBtn.textContent = `Cancel adding all ${newCount} links.`;
+    importOverflowCancelBtn.onclick = () => {
+      importLinksToApply = [];
+      importPreviewSection.hidden = true;
+      importParseBtn.hidden = false;
+      importOverflowSection.hidden = true;
+      importConfirmBtn.hidden = true;
+    };
+  } else {
+    importLinksToApply = importParsedLinks.slice();
+    importConfirmBtn.hidden = false;
+  }
+}
+
+function showLeftoverLinks(leftover) {
+  if (leftover.length === 0) {
+    importLeftoverSection.hidden = true;
+    return;
+  }
+  const text = leftover.map(l => `${l.url} | ${l.title}`).join("\n");
+  importLeftoverTextarea.value = text;
+  importLeftoverSection.hidden = false;
+}
+
+importCopyLeftoverBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(importLeftoverTextarea.value);
+    importCopyLeftoverBtn.textContent = "Copied!";
+    setTimeout(() => { importCopyLeftoverBtn.textContent = "Copy leftover links"; }, 2000);
+  } catch (e) {
+    importLeftoverTextarea.select();
+  }
+});
+
+importConfirmBtn.addEventListener("click", () => {
+  const emptyPositions = [];
+  for (let i = 0; i < MAX_TILES; i++) {
+    if (isTileEmpty(getTile(i))) emptyPositions.push(i);
+  }
+
+  importLinksToApply.forEach((link, idx) => {
+    const position = emptyPositions[idx];
+    if (position === undefined) return;
+    const tile = getTile(position);
+    tile.link = link.url;
+    tile.title = link.title.trim() || link.url;
+    tile.imageType = "favicon";
+    tile.imageData = null;
+    tile.linkedCollectionId = null;
+  });
+
+  closeImportModal();
   renderCollection(currentCollection);
   markUnsaved();
 });
