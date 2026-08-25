@@ -921,6 +921,12 @@ tileMenuOverlay.addEventListener("click", (e) => {
 
 function openMovePicker() {
   moveGridPreview.innerHTML = "";
+
+  const leftBank = document.createElement("div");
+  leftBank.className = "move-grid-bank";
+  const rightBank = document.createElement("div");
+  rightBank.className = "move-grid-bank";
+
   for (let i = 0; i < MAX_TILES; i++) {
     const slot = document.createElement("div");
     slot.className = "move-slot";
@@ -935,10 +941,18 @@ function openMovePicker() {
         slot.classList.add("slot-filled");
       }
     }
-    moveGridPreview.appendChild(slot);
+    if (i < 16) {
+      leftBank.appendChild(slot);
+    } else {
+      rightBank.appendChild(slot);
+    }
   }
+
+  moveGridPreview.appendChild(leftBank);
+  moveGridPreview.appendChild(rightBank);
   moveOverlay.hidden = false;
 }
+
 
 function closeMovePicker() {
   moveOverlay.hidden = true;

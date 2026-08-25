@@ -602,10 +602,17 @@ html, body {
 
 /* Move-tile preview grid */
 .move-grid-preview {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
   margin-bottom: 16px;
+}
+
+.move-grid-bank {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 140px;
 }
 
 .move-slot {
