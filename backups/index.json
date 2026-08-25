@@ -4,15 +4,15 @@
       "id": "main",
       "title": "Main",
       "file": "collections/main.json",
-      "lastModified": "2026-08-19T22:38:26.684Z",
+      "lastModified": "2026-08-25T15:22:15.378Z",
       "tileCount": 11
     },
     {
       "id": "math",
       "title": "Math",
       "file": "collections/math.json",
-      "lastModified": "2026-08-19T21:59:31.127Z",
-      "tileCount": 0
+      "lastModified": "2026-08-20T01:21:55.920Z",
+      "tileCount": 25
     },
     {
       "id": "english",
