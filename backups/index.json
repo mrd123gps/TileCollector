@@ -4,20 +4,22 @@
       "id": "main",
       "title": "Main",
       "file": "collections/main.json",
-      "lastModified": "2026-08-25T15:22:15.378Z",
-      "tileCount": 11
+      "lastModified": "2026-08-25T17:09:51.239Z",
+      "tileCount": 12
     },
     {
       "id": "math",
       "title": "Math",
       "file": "collections/math.json",
-      "lastModified": "2026-08-20T01:21:55.920Z",
-      "tileCount": 25
+      "lastModified": "2026-09-05T18:24:01.397Z",
+      "tileCount": 24
     },
     {
       "id": "english",
       "title": "English Language",
-      "file": "collections/english.json"
+      "file": "collections/english.json",
+      "lastModified": "2026-08-26T17:14:37.116Z",
+      "tileCount": 16
     },
     {
       "id": "science",
@@ -43,6 +45,13 @@
       "id": "fsl",
       "title": "French as a Second Language",
       "file": "collections/fsl.json"
+    },
+    {
+      "id": "dictionaries-word-tools",
+      "title": "Dictionaries & Word Tools",
+      "file": "collections/dictionaries-word-tools.json",
+      "lastModified": "2026-08-26T17:13:03.569Z",
+      "tileCount": 6
     }
   ]
 }
