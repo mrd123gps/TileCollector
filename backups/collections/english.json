@@ -164,17 +164,17 @@
     },
     {
       "position": 20,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://wordly.org/wordle-for-kids",
+      "title": "Wordle",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
     {
       "position": 21,
-      "link": null,
-      "title": null,
-      "imageType": null,
+      "link": "https://spelliegame.com/#easy",
+      "title": "spellie (wordle)",
+      "imageType": "favicon",
       "imageData": null,
       "linkedCollectionId": null
     },
