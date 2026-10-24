@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Mr. D's Links",
+      "hasCanvas": false,
+      "bodyTextLen": 89,
+      "bodyTextHash": "4e199ed85c2e3667afcafb24311d065f9aae22efd5a4ad1ab1ec8dd2b1aa3b5d",
+      "bodyTextPrefix": "Mr. D's Links Main 🔢 Math 📖 English 🔬 Science 🌍 Social Studi",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Mr. D's Links",
+      "hasCanvas": false,
+      "bodyTextLen": 89,
+      "bodyTextHash": "4e199ed85c2e3667afcafb24311d065f9aae22efd5a4ad1ab1ec8dd2b1aa3b5d",
+      "bodyTextPrefix": "Mr. D's Links Main 🔢 Math 📖 English 🔬 Science 🌍 Social Studi",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

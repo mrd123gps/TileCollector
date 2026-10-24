@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mr. D's Links">
+  <rect width="32" height="32" rx="7" fill="#f6f1e8"/>
+  <rect x="3.5" y="3.5" width="11.5" height="11.5" rx="3" fill="#4a6cf7"/>
+  <rect x="17" y="3.5" width="11.5" height="11.5" rx="3" fill="#14b8a6"/>
+  <rect x="3.5" y="17" width="11.5" height="11.5" rx="3" fill="#3d9a45"/>
+  <rect x="17" y="17" width="11.5" height="11.5" rx="3" fill="#d946a6"/>
+</svg>
